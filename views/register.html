@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - EduSphere LMS</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .auth-container {
+            max-width: 400px;
+            margin: 4rem auto;
+            padding: 2rem;
+        }
+        .auth-tabs {
+            display: flex;
+            margin-bottom: 2rem;
+            border-bottom: 2px solid var(--medium-gray);
+        }
+        .auth-tab {
+            flex: 1;
+            text-align: center;
+            padding: 1rem;
+            cursor: pointer;
+            color: var(--light-gray);
+            text-decoration: none;
+        }
+        .auth-tab.active {
+            color: var(--primary-purple);
+            border-bottom: 2px solid var(--primary-purple);
+            margin-bottom: -2px;
+        }
+        .auth-form {
+            display: none;
+        }
+        .auth-form.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+
+    <main class="container">
+        <div class="auth-container glass-card">
+            <div class="auth-tabs">
+                <a href="/login" class="auth-tab">Login</a>
+                <a href="/register" class="auth-tab active">Register</a>
+            </div>
+
+            <form id="registerForm" class="auth-form active">
+                <div class="form-group">
+                    <label for="registerUsername">Username</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-user"></i>
+                        <input type="text" id="registerUsername" name="username" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="registerEmail">Email</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-envelope"></i>
+                        <input type="email" id="registerEmail" name="email" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="registerPassword">Password (min 6 characters)</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" id="registerPassword" name="password" required minlength="6">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm Password</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" id="confirmPassword" name="confirmPassword" required>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn glow-btn" style="width: 100%; margin-top: 1rem;">
+                    <i class="fas fa-user-plus"></i> Register
+                </button>
+
+                <div id="registerMessage" style="margin-top: 1rem; text-align: center;"></div>
+            </form>
+        </div>
+    </main>
+
+
+
+    <script>
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const password = document.getElementById('registerPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            if (password !== confirmPassword) {
+                document.getElementById('registerMessage').textContent = 'Passwords do not match';
+                document.getElementById('registerMessage').style.color = '#ff6b6b';
+                return;
+            }
+
+            if (password.length < 6) {
+                document.getElementById('registerMessage').textContent = 'Password must be at least 6 characters';
+                document.getElementById('registerMessage').style.color = '#ff6b6b';
+                return;
+            }
+
+            const formData = {
+                username: document.getElementById('registerUsername').value,
+                email: document.getElementById('registerEmail').value,
+                password: password
+            };
+
+            try {
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    window.location.href = '/profile';
+                } else {
+                    document.getElementById('registerMessage').textContent = data.error;
+                    document.getElementById('registerMessage').style.color = '#ff6b6b';
+                }
+            } catch (error) {
+                document.getElementById('registerMessage').textContent = 'An error occurred';
+                document.getElementById('registerMessage').style.color = '#ff6b6b';
+            }
+        });
+    </script>
+</body>
+</html>

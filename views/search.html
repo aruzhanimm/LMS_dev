@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browse Courses - EduSphere LMS</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+
+    <main class="container">
+        <div class="search-header-compact">
+            <h1>Find Your Next Course</h1>
+            <div class="search-bar-wrapper">
+                <i class="fas fa-search search-icon"></i>
+                <input type="text" id="searchInput" placeholder="What do you want to learn today?" value="">
+                <button class="btn glow-btn">Search</button>
+            </div>
+        </div>
+
+        <div class="browse-layout">
+            <aside class="filters-sidebar glass-card-small">
+                <div class="filter-group">
+                    <h3><i class="fas fa-filter"></i> Categories</h3>
+                    <label class="checkbox-container">Development
+                        <input type="checkbox" checked>
+                        <span class="checkmark"></span>
+                    </label>
+                    <label class="checkbox-container">Business
+                        <input type="checkbox">
+                        <span class="checkmark"></span>
+                    </label>
+                    <label class="checkbox-container">IT & Software
+                        <input type="checkbox">
+                        <span class="checkmark"></span>
+                    </label>
+                    <label class="checkbox-container">Design
+                        <input type="checkbox">
+                        <span class="checkmark"></span>
+                    </label>
+                </div>
+
+                <div class="filter-group">
+                    <h3><i class="fas fa-layer-group"></i> Level</h3>
+                    <label class="checkbox-container">Beginner
+                        <input type="checkbox">
+                        <span class="checkmark"></span>
+                    </label>
+                    <label class="checkbox-container">Intermediate
+                        <input type="checkbox">
+                        <span class="checkmark"></span>
+                    </label>
+                    <label class="checkbox-container">Expert
+                        <input type="checkbox">
+                        <span class="checkmark"></span>
+                    </label>
+                </div>
+
+                <div class="filter-group">
+                    <h3><i class="fas fa-star"></i> Rating</h3>
+                    <div class="rating-filter">
+                        <i class="fas fa-star"></i> 4.5 & up
+                    </div>
+                    <div class="rating-filter">
+                        <i class="fas fa-star"></i> 4.0 & up
+                    </div>
+                </div>
+            </aside>
+
+            <div class="results-area">
+                <div class="results-meta">
+                    <p>Showing <span id="count">6</span> courses</p>
+                   <select class="sort-select">
+                       <option value="popular">Most Popular</option>
+                       <option value="newest">Newest</option>
+                       <option value="price_asc">Price: Low to High</option>
+                   </select>
+                </div>
+
+                <div class="courses-grid" id="coursesGrid">
+
+                    <div class="course-card glass-card hover-scale">
+                        <div class="card-img-top">
+                            <span class="badge-overlay">Best Seller</span>
+                            <img src="/images/c1.jpg" alt="Web Dev">
+                        </div>
+                        <div class="card-body">
+                            <div class="card-meta">
+                                <span class="category">Development</span>
+                                <span class="rating"><i class="fas fa-star"></i> 4.8 (1.2k)</span>
+                            </div>
+                            <h3 class="course-title">Web Development Fundamentals</h3>
+                            <p class="instructor">By Alex Johnson</p>
+                            <div class="card-footer">
+                                <span class="price">$19.99</span>
+                                <a href="/item/1" class="btn-sm">View</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="course-card glass-card hover-scale">
+                        <div class="card-img-top">
+                            <img src="/images/c2.jpg" alt="Algorithms">
+                        </div>
+                        <div class="card-body">
+                            <div class="card-meta">
+                                <span class="category">CS Theory</span>
+                                <span class="rating"><i class="fas fa-star"></i> 4.9 (850)</span>
+                            </div>
+                            <h3 class="course-title">Data Structures & Algorithms</h3>
+                            <p class="instructor">By Sarah Lee</p>
+                            <div class="card-footer">
+                                <span class="price">$24.99</span>
+                                <a href="/item/2" class="btn-sm">View</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="course-card glass-card hover-scale">
+                        <div class="card-img-top">
+                            <span class="badge-overlay new">New</span>
+                            <img src="/images/c3.jpg" alt="ML">
+                        </div>
+                        <div class="card-body">
+                            <div class="card-meta">
+                                <span class="category">Data Science</span>
+                                <span class="rating"><i class="fas fa-star"></i> 4.7 (500)</span>
+                            </div>
+                            <h3 class="course-title">Machine Learning Basics</h3>
+                            <p class="instructor">By Dr. Alan Turing</p>
+                            <div class="card-footer">
+                                <span class="price">$29.99</span>
+                                <a href="/item/3" class="btn-sm">View</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="course-card glass-card hover-scale">
+                        <div class="card-img-top">
+                            <img src="/images/c4.jpg" alt="Mobile">
+                        </div>
+                        <div class="card-body">
+                            <div class="card-meta">
+                                <span class="category">Mobile Dev</span>
+                                <span class="rating"><i class="fas fa-star"></i> 4.6 (320)</span>
+                            </div>
+                            <h3 class="course-title">Mobile App Development</h3>
+                            <p class="instructor">By John Doe</p>
+                            <div class="card-footer">
+                                <span class="price">$19.99</span>
+                                <a href="/item/4" class="btn-sm">View</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="course-card glass-card hover-scale">
+                        <div class="card-img-top">
+                            <img src="/images/c5.jpg" alt="Database">
+                        </div>
+                        <div class="card-body">
+                            <div class="card-meta">
+                                <span class="category">Backend</span>
+                                <span class="rating"><i class="fas fa-star"></i> 4.8 (210)</span>
+                            </div>
+                            <h3 class="course-title">Database Design Masterclass</h3>
+                            <p class="instructor">By Jane Smith</p>
+                            <div class="card-footer">
+                                <span class="price">$22.99</span>
+                                <a href="/item/5" class="btn-sm">View</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="course-card glass-card hover-scale">
+                        <div class="card-img-top">
+                            <img src="/images/c6.jpg" alt="Security">
+                        </div>
+                        <div class="card-body">
+                            <div class="card-meta">
+                                <span class="category">Security</span>
+                                <span class="rating"><i class="fas fa-star"></i> 4.9 (1.5k)</span>
+                            </div>
+                            <h3 class="course-title">Cybersecurity Fundamentals</h3>
+                            <p class="instructor">By Mr. Robot</p>
+                            <div class="card-footer">
+                                <span class="price">$34.99</span>
+                                <a href="/item/6" class="btn-sm">View</a>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+
+
+    <script>
+    async function loadCourses() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const searchQuery = urlParams.get('q') || '';
+
+
+        if (searchQuery === 'programming') {
+            document.getElementById('searchInput').value = '';
+            history.replaceState(null, '', '/search');
+        } else {
+            document.getElementById('searchInput').value = searchQuery;
+        }
+
+
+        const params = new URLSearchParams();
+        if (searchQuery && searchQuery !== 'programming') {
+            params.append('search', searchQuery);
+        }
+
+
+        const sortSelect = document.querySelector('.sort-select');
+        if (sortSelect && sortSelect.value) {
+            params.append('sort', sortSelect.value);
+        }
+
+
+        const categoryFilters = document.querySelectorAll('.filter-group input[type="checkbox"]:checked');
+        categoryFilters.forEach(cb => {
+            const category = cb.closest('.checkbox-container').textContent.trim();
+            params.append('category', category);
+        });
+
+        try {
+            const response = await fetch(`/api/courses?${params.toString()}`);
+            const data = await response.json();
+
+            const grid = document.getElementById('coursesGrid');
+            const countElement = document.getElementById('count');
+
+            if (data.courses && data.courses.length > 0) {
+                grid.innerHTML = data.courses.map(course => `
+                    <div class="course-card glass-card hover-scale">
+                        <div class="card-img-top">
+                            ${course.image ? `<img src="${course.image}" alt="${course.title}" style="height: 160px; object-fit: cover;">` :
+                            '<div style="height: 160px; background: var(--medium-gray); display: flex; align-items: center; justify-content: center;">' +
+                            '<i class="fas fa-graduation-cap" style="font-size: 3rem; color: var(--light-gray);"></i></div>'}
+                            ${course.enrolledCount > 100 ? '<span class="badge-overlay">Popular</span>' : ''}
+                        </div>
+                        <div class="card-body">
+                            <div class="card-meta">
+                                <span class="category">${course.category || 'Development'}</span>
+                                <span class="rating"><i class="fas fa-star"></i> ${course.rating || 4.8}</span>
+                            </div>
+                            <h3 class="course-title">${course.title}</h3>
+                            <p class="instructor">By ${course.instructor}</p>
+                            <div class="card-footer">
+                                <span class="price">$${course.price || 19.99}</span>
+                                <div>
+                                    <a href="/item/${course._id}" class="btn-sm">View</a>
+                                    ${course.enrolledCount !== undefined ?
+                                        `<span class="enrolled-count" style="font-size: 0.8rem; color: var(--light-gray); margin-left: 5px;">
+                                            <i class="fas fa-users"></i> ${course.enrolledCount}
+                                        </span>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+
+                countElement.textContent = data.totalCourses || data.courses.length;
+            } else {
+                grid.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; padding: 3rem;">No courses found. Try a different search.</p>';
+                countElement.textContent = '0';
+            }
+        } catch (error) {
+            console.error('Error loading courses:', error);
+        }
+    }
+
+
+    let searchTimeout;
+    document.getElementById('searchInput').addEventListener('input', function(e) {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            const searchText = e.target.value.trim();
+            const url = new URL(window.location);
+
+            if (searchText) {
+                url.searchParams.set('q', searchText);
+            } else {
+                url.searchParams.delete('q');
+            }
+
+            window.history.pushState({}, '', url);
+            loadCourses();
+        }, 300);
+    });
+
+
+    document.querySelector('.sort-select').addEventListener('change', function() {
+        loadCourses();
+    });
+
+
+    document.querySelectorAll('.filter-group input[type="checkbox"]').forEach(checkbox => {
+        checkbox.addEventListener('change', loadCourses);
+    });
+
+
+    loadCourses();
+
+
+    document.querySelector('.search-bar-wrapper button').addEventListener('click', () => {
+        const searchText = document.getElementById('searchInput').value;
+        const url = new URL(window.location);
+
+        if (searchText) {
+            url.searchParams.set('q', searchText);
+        } else {
+            url.searchParams.delete('q');
+        }
+
+        window.location.href = url.toString();
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Course Details - EduSphere LMS</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+
+    <main class="container">
+        <div class="item-detail">
+            <div class="item-header">
+                <h1 id="course-title">Web Development Fundamentals</h1>
+                <div class="item-meta">
+                    <span><i class="fas fa-star" style="color: gold;"></i> 4.8/5.0</span> |
+                    <span><i class="fas fa-clock"></i> 40 hours</span> |
+                    <span><i class="fas fa-users"></i> 1250 students</span>
+                </div>
+            </div>
+
+            <div style="margin: 2rem 0;">
+                <img src="/images/placeholder.jpg" alt="Course Image" style="width: 100%; height: 300px; object-fit: cover; border-radius: 10px;">
+            </div>
+
+            <h2>Course Description</h2>
+            <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
+
+            <p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
+
+            <h2 style="margin-top: 2rem;">What You'll Learn</h2>
+            <ul style="margin-left: 2rem; margin-top: 1rem;">
+                <li>HTML5 and Semantic Web Structure</li>
+                <li>CSS3 and Modern Layout Techniques</li>
+                <li>JavaScript Fundamentals</li>
+                <li>Responsive Web Design</li>
+                <li>Basic Backend Concepts</li>
+                <li>Version Control with Git</li>
+            </ul>
+
+            <h2 style="margin-top: 2rem;">Instructor</h2>
+            <div style="display: flex; align-items: center; gap: 1rem; margin-top: 1rem;">
+                <div style="width: 60px; height: 60px; background: var(--primary-purple); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+                    AJ
+                </div>
+                <div>
+                    <h3>Alex Johnson</h3>
+                    <p>Senior Web Developer with 10+ years experience</p>
+                </div>
+            </div>
+
+            <div style="margin-top: 3rem; text-align: center;">
+                <a href="/contact" class="btn" style="padding: 1rem 3rem;">
+                    <i class="fas fa-enroll"></i> Enroll Now
+                </a>
+                <a href="/search?q=courses" class="btn btn-secondary" style="margin-left: 1rem;">
+                    Browse More Courses
+                </a>
+            </div>
+        </div>
+    </main>
+
+    <script>
+    async function loadCourse() {
+        const pathParts = window.location.pathname.split('/');
+        const courseId = pathParts[pathParts.length - 1];
+
+        try {
+            const response = await fetch(`/api/courses/${courseId}`);
+            const course = await response.json();
+
+            if (response.ok) {
+
+                document.getElementById('course-title').textContent = course.title;
+                document.querySelector('.item-meta span:nth-child(1)').innerHTML =
+                    `<i class="fas fa-star" style="color: gold;"></i> ${course.rating || 4.8}/5.0`;
+                document.querySelector('.item-meta span:nth-child(2)').innerHTML =
+                    `<i class="fas fa-clock"></i> ${course.duration || '40 hours'}`;
+                document.querySelector('.item-meta span:nth-child(3)').innerHTML =
+                    `<i class="fas fa-users"></i> ${course.enrolledCount || 0} students`;
+
+                const courseImage = document.querySelector('.item-detail img');
+                courseImage.src = course.image || '/images/placeholder.jpg';
+                courseImage.alt = course.title;
+
+                // Описание курса
+                const descriptionSection = document.querySelector('.item-detail p');
+                if (descriptionSection) {
+                    descriptionSection.textContent = course.description;
+                }
+
+                // Информация об инструкторе
+                const instructorSection = document.querySelector('.item-detail h3');
+                if (instructorSection && course.instructor) {
+                    instructorSection.textContent = course.instructor;
+                }
+
+                // Кнопка записи
+                const enrollButton = document.querySelector('.btn[href="/contact"]');
+                if (enrollButton) {
+                    enrollButton.innerHTML = '<i class="fas fa-user-plus"></i> Enroll Now';
+                    enrollButton.onclick = (e) => {
+                        e.preventDefault();
+                        enrollInCourse(courseId);
+                    };
+                }
+
+                // Проверяем, записан ли пользователь
+                const userResponse = await fetch('/api/auth/me');
+                if (userResponse.ok) {
+                    const userData = await userResponse.json();
+                    if (userData.user) {
+                        // Можно добавить логику для проверки записи на курс
+                    }
+                }
+            } else {
+                console.error('Course not found');
+            }
+        } catch (error) {
+            console.error('Error loading course:', error);
+        }
+    }
+
+    async function enrollInCourse(courseId) {
+        try {
+            const response = await fetch(`/api/courses/${courseId}/enroll`, {
+                method: 'POST'
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                alert('Successfully enrolled in the course!');
+                // Обновляем счетчик
+                loadCourse();
+            } else {
+                if (response.status === 401) {
+                    window.location.href = '/login';
+                } else {
+                    alert(data.error || 'Failed to enroll');
+                }
+            }
+        } catch (error) {
+            console.error('Error enrolling:', error);
+            alert('An error occurred. Please try again.');
+        }
+    }
+
+
+    loadCourse();
+</script>
+</body>
+</html>

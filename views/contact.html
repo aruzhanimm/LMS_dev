@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact Us - EduSphere LMS</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+
+    <main class="container">
+        <div class="contact-wrapper">
+            <div class="contact-info-side animate-left">
+                <span class="badge">24/7 SUPPORT</span>
+                <h1>Get in <span class="text-gradient">Touch</span></h1>
+                <p class="subtitle">Have questions about our courses or pricing? Our team is ready to help you achieve your learning goals.</p>
+
+                <div class="trust-photo-container">
+                     <img src="/images/support2.png" alt="Our Support Team" class="trust-img">
+                    <div class="trust-badge">
+                        <i class="fas fa-check-circle"></i> Trusted by 10k+ Students
+                    </div>
+                </div>
+
+                <div class="contact-cards-grid">
+                    <div class="info-card glass-card-small">
+                        <i class="fas fa-envelope icon-glow"></i>
+                        <div>
+                            <h4>Email Us</h4>
+                            <p>info@edusphere.com</p>
+                        </div>
+                    </div>
+                    <div class="info-card glass-card-small">
+                         <i class="fas fa-phone icon-glow"></i>
+                        <div>
+                            <h4>Call Us</h4>
+                            <p>+7 777 616 8374</p>
+                        </div>
+                    </div>
+                    <div class="info-card glass-card-small full-width">
+                        <i class="fas fa-map-marker-alt icon-glow"></i>
+                        <div>
+                            <h4>Visit Us</h4>
+                            <p>Mangilik El, Astana IT University</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="contact-form-side animate-right">
+                <div class="form-container glass-card">
+                    <h2>Send us a Message</h2>
+                    <form action="/contact" method="POST" onsubmit="return validateForm()">
+                        <div class="form-group">
+                            <label for="name">Full Name *</label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-user"></i>
+                                <input type="text" id="name" name="name" required placeholder="John Doe">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="email">Email Address *</label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-envelope"></i>
+                                <input type="email" id="email" name="email" required placeholder="john@example.com">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="message">Message *</label>
+                            <div class="input-wrapper textarea-wrapper">
+                                <i class="fas fa-comment"></i>
+                                <textarea id="message" name="message" required placeholder="How can we help you?"></textarea>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn glow-btn" style="width: 100%;">
+                            Send Message <i class="fas fa-paper-plane" style="margin-left: 8px;"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </main>
+
+
+    <script>
+
+        function validateForm() {
+            const name = document.getElementById('name').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const message = document.getElementById('message').value.trim();
+
+            if (!name || !email || !message) {
+                alert('Please fill in all required fields.');
+                return false;
+            }
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                alert('Please enter a valid email address.');
+                return false;
+            }
+            return true;
+        }
+    </script>
+</body>
+</html>

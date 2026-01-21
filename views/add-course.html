@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Course - EduSphere LMS</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .form-container {
+            max-width: 800px;
+            margin: 2rem auto;
+        }
+        .form-preview {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+        .preview-card {
+            background: var(--glass-bg);
+            border: var(--glass-border);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-top: 1rem;
+        }
+        .preview-image {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+        }
+        .image-upload {
+            border: 2px dashed var(--primary-purple);
+            padding: 2rem;
+            text-align: center;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-bottom: 1rem;
+        }
+        .image-upload:hover {
+            background: rgba(138, 43, 226, 0.1);
+        }
+        #imagePreview {
+            max-width: 100%;
+            max-height: 300px;
+            display: none;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+
+    <main class="container">
+        <div class="form-container">
+            <h1 id="formTitle">Add New Course</h1>
+
+            <div class="form-preview">
+                <div>
+                    <form id="courseForm" enctype="multipart/form-data">
+                        <div class="form-group">
+                            <label for="title">Course Title *</label>
+                            <input type="text" id="title" name="title" required class="form-control">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="description">Description *</label>
+                            <textarea id="description" name="description" rows="4" required class="form-control"></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="category">Category *</label>
+                            <select id="category" name="category" required class="form-control">
+                                <option value="">Select Category</option>
+                                <option value="Development">Development</option>
+                                <option value="Data Science">Data Science</option>
+                                <option value="Business">Business</option>
+                                <option value="Design">Design</option>
+                                <option value="IT & Software">IT & Software</option>
+                                <option value="Marketing">Marketing</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="instructor">Instructor Name *</label>
+                            <input type="text" id="instructor" name="instructor" required class="form-control">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="price">Price ($)</label>
+                            <input type="number" id="price" name="price" min="0" step="0.01" class="form-control" value="19.99">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="duration">Duration</label>
+                            <input type="text" id="duration" name="duration" class="form-control" value="40 hours">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="level">Level</label>
+                            <select id="level" name="level" class="form-control">
+                                <option value="Beginner">Beginner</option>
+                                <option value="Intermediate">Intermediate</option>
+                                <option value="Advanced">Advanced</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="image">Course Image</label>
+                            <div class="image-upload" onclick="document.getElementById('imageInput').click()">
+                                <i class="fas fa-cloud-upload-alt" style="font-size: 2rem; color: var(--primary-purple);"></i>
+                                <p>Click to upload image</p>
+                                <small>Recommended: 16:9 ratio, max 5MB</small>
+                            </div>
+                            <input type="file" id="imageInput" name="image" accept="image/*" style="display: none;" onchange="previewImage(event)">
+                            <img id="imagePreview" alt="Image Preview">
+                        </div>
+
+                        <div class="form-group">
+                            <button type="submit" class="btn glow-btn">
+                                <i class="fas fa-save"></i> Save Course
+                            </button>
+                            <a href="/profile" class="btn btn-secondary" style="margin-left: 1rem;">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                        </div>
+
+                        <div id="formMessage" style="margin-top: 1rem;"></div>
+                    </form>
+                </div>
+
+                <div>
+                    <h3>Preview</h3>
+                    <div class="preview-card">
+                        <img id="previewImage" src="/images/placeholder.jpg" alt="Preview" class="preview-image">
+                        <div class="card-meta">
+                            <span id="previewCategory" class="category">Category</span>
+                            <span class="rating"><i class="fas fa-star"></i> 4.8</span>
+                        </div>
+                        <h3 id="previewTitle">Course Title</h3>
+                        <p id="previewInstructor" class="instructor">By Instructor</p>
+                        <p id="previewDescription" style="color: var(--light-gray); font-size: 0.9rem; margin: 10px 0;">
+                            Course description will appear here...
+                        </p>
+                        <div class="card-footer">
+                            <span id="previewPrice" class="price">$19.99</span>
+                            <span class="level" id="previewLevel">Beginner</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+
+    <script>
+        // Check if user is logged in
+        async function checkAuth() {
+            try {
+                const response = await fetch('/api/auth/me');
+                if (response.status === 401) {
+                    window.location.href = '/login';
+                }
+            } catch (error) {
+                window.location.href = '/login';
+            }
+        }
+
+        // Preview image
+        function previewImage(event) {
+            const input = event.target;
+            const preview = document.getElementById('imagePreview');
+            const previewImg = document.getElementById('previewImage');
+
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                    previewImg.src = e.target.result;
+                }
+
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        // Update preview in real-time
+        document.getElementById('title').addEventListener('input', function() {
+            document.getElementById('previewTitle').textContent = this.value || 'Course Title';
+        });
+
+        document.getElementById('description').addEventListener('input', function() {
+            document.getElementById('previewDescription').textContent = this.value || 'Course description will appear here...';
+        });
+
+        document.getElementById('category').addEventListener('change', function() {
+            document.getElementById('previewCategory').textContent = this.value || 'Category';
+        });
+
+        document.getElementById('instructor').addEventListener('input', function() {
+            document.getElementById('previewInstructor').textContent = 'By ' + (this.value || 'Instructor');
+        });
+
+        document.getElementById('price').addEventListener('input', function() {
+            document.getElementById('previewPrice').textContent = '$' + (this.value || '19.99');
+        });
+
+        document.getElementById('level').addEventListener('change', function() {
+            document.getElementById('previewLevel').textContent = this.value || 'Beginner';
+        });
+
+        // Handle form submission
+        document.getElementById('courseForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData();
+            formData.append('title', document.getElementById('title').value);
+            formData.append('description', document.getElementById('description').value);
+            formData.append('category', document.getElementById('category').value);
+            formData.append('instructor', document.getElementById('instructor').value);
+            formData.append('price', document.getElementById('price').value);
+            formData.append('duration', document.getElementById('duration').value);
+            formData.append('level', document.getElementById('level').value);
+
+            const imageInput = document.getElementById('imageInput');
+            if (imageInput.files[0]) {
+                formData.append('image', imageInput.files[0]);
+            }
+
+            // Check if editing existing course
+            const urlParams = new URLSearchParams(window.location.search);
+            const courseId = urlParams.get('edit');
+
+            try {
+                const url = courseId ? `/api/courses/${courseId}` : '/api/courses';
+                const method = courseId ? 'PUT' : 'POST';
+
+                const response = await fetch(url, {
+                    method: method,
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    document.getElementById('formMessage').textContent = data.message;
+                    document.getElementById('formMessage').style.color = '#00ff88';
+
+                    // Redirect after success
+                    setTimeout(() => {
+                        window.location.href = '/profile';
+                    }, 2000);
+                } else {
+                    document.getElementById('formMessage').textContent = data.error;
+                    document.getElementById('formMessage').style.color = '#ff6b6b';
+                }
+            } catch (error) {
+                document.getElementById('formMessage').textContent = 'An error occurred';
+                document.getElementById('formMessage').style.color = '#ff6b6b';
+            }
+        });
+
+        // Load course data if editing
+        async function loadCourseForEdit() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const courseId = urlParams.get('edit');
+
+            if (courseId) {
+                document.getElementById('formTitle').textContent = 'Edit Course';
+
+                try {
+                    const response = await fetch(`/api/courses/${courseId}`);
+                    const course = await response.json();
+
+                    if (response.ok) {
+                        document.getElementById('title').value = course.title;
+                        document.getElementById('description').value = course.description;
+                        document.getElementById('category').value = course.category;
+                        document.getElementById('instructor').value = course.instructor;
+                        document.getElementById('price').value = course.price;
+                        document.getElementById('duration').value = course.duration;
+                        document.getElementById('level').value = course.level;
+
+                        // Update preview
+                        document.getElementById('previewTitle').textContent = course.title;
+                        document.getElementById('previewDescription').textContent = course.description;
+                        document.getElementById('previewCategory').textContent = course.category;
+                        document.getElementById('previewInstructor').textContent = 'By ' + course.instructor;
+                        document.getElementById('previewPrice').textContent = '$' + course.price;
+                        document.getElementById('previewLevel').textContent = course.level;
+
+                        if (course.image && course.image !== '/images/placeholder.jpg') {
+                            document.getElementById('previewImage').src = course.image;
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error loading course:', error);
+                }
+            }
+        }
+
+        // Initial setup
+        checkAuth();
+        loadCourseForEdit();
+    </script>
+</body>
+</html>
