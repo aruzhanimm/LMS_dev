@@ -32,9 +32,9 @@ Assignment 3 Part 1 Launching from localhost to Render
 ##  Environment Variables
 **Create a .env file:**
 env
-MONGODB_URI=your_mongodb_atlas_connection_string
-JWT_SECRET=your_jwt_secret_key
-PORT=3000
+- MONGODB_URI=your_mongodb_atlas_connection_string
+- JWT_SECRET=your_jwt_secret_key
+- PORT=3000
 
 
 ### How to Run
