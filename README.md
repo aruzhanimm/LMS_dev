@@ -2,37 +2,40 @@
 
 ## Project Overview
 EduSphere is a modern Learning Management System designed to revolutionize online education.
+Assignment 1 Part 1 Сreating a project structure
+Assignment 1 Part 2 Connect the frontend to the backend and add new features
 Assignment 2 Part 2 implemented Database integration using SQLite.
+Assignment 3 Part 1 implemented Database integration using MongoDB.
+Assignment 3 Part 1 Launching from localhost to Render
+
 
 ## Team Members
 - **Aruzhan Kartam**  - Full Stack Developer
 
 ## Technologies
 - **Backend**: Node.js, Express.js
-- **Database**: SQLite3 (Lightweight, file-based DB)
+- **Database**: Mongo DB
 - **Frontend**: HTML5, CSS3, JavaScript
 
-## Database Structure
-We use one main entity: **Courses**.
-Table: `courses`
-| Field       | Type    | Description             |
-|-------------|---------|-------------------------|
-| id          | INTEGER | Primary Key (Auto Inc)  |
-| title       | TEXT    | Name of the course      |
-| description | TEXT    | Detailed info           |
-| duration    | TEXT    | Course length (e.g. 40h)|
-| instructor  | TEXT    | Teacher's name          |
+##  DevOps & Tools
+- **Render** - Cloud deployment platform
+- **MongoDB** Atlas - Cloud database service
+- **Git** - Version control
+- **dotenv** - Environment variable management
 
-## API Documentation (CRUD)
-The project provides a REST API at `/api/courses`.
+## Course Management System
+- **Full CRUD Operations**: Create, Read, Update, Delete courses
+- **Advanced Filtering & Sorting:** Filter by category, level, price, instructor
+- **Full-Text Search:** MongoDB text search across course titles and descriptions
+- **Image Upload:** GridFS storage for course images
 
-| Method | Endpoint          | Description            | Status Codes |
-|--------|-------------------|------------------------|--------------|
-| GET    | `/api/courses`    | Get all courses        | 200, 500     |
-| GET    | `/api/courses/:id`| Get course by ID       | 200, 400, 404|
-| POST   | `/api/courses`    | Create new course      | 201, 400, 500|
-| PUT    | `/api/courses/:id`| Update existing course | 200, 400, 404|
-| DELETE | `/api/courses/:id`| Delete course by ID    | 200, 400, 404|
+##  Environment Variables
+**Create a .env file:**
+env
+MONGODB_URI=your_mongodb_atlas_connection_string
+JWT_SECRET=your_jwt_secret_key
+PORT=3000
+
 
 ### How to Run
 1. Install dependencies:
