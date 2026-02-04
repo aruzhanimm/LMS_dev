@@ -52,7 +52,7 @@ const initialCourses = [
     {
         title: "Mobile App Development",
         description: "Build cross-platform mobile applications using React Native. Learn to create apps for both iOS and Android.",
-        category: "Mobile Development",
+        category: "Development",
         instructor: "John Doe",
         price: 19.99,
         duration: "45 hours",
@@ -67,7 +67,7 @@ const initialCourses = [
     {
         title: "Database Design Masterclass",
         description: "Learn database design principles, SQL queries, normalization, and optimization techniques.",
-        category: "Backend",
+        category: "Development",
         instructor: "Jane Smith",
         price: 22.99,
         duration: "35 hours",
