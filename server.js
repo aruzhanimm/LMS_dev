@@ -30,7 +30,9 @@ app.use(session({
     resave: false,
     saveUninitialized: false,
     cookie: {
-        maxAge: 1000 * 60 * 60 * 24 // 24 часа
+        httpOnly: true,
+        // secure: true,
+        maxAge: 1000 * 60 * 60 * 24
     }
 }));
 
@@ -62,44 +64,67 @@ const renderTemplate = (res, templatePath, data = {}) => {
                 }
 
                 fs.readFile(footerPath, 'utf8', (err, footer) => {
-                    if (err) {
-                        reject(err);
-                        return;
+                if (err) {
+                    reject(err);
+                    return;
+                }
+
+                let renderedHeader = header;
+
+                // ---------------------------------------------------------
+                // 1. Сначала обрабатываем активные пункты меню (НЕ ТЕРЯЕМ ЭТО)
+                // ---------------------------------------------------------
+                if (data.active) {
+                    Object.keys(data.active).forEach(key => {
+                        // Ищем точное совпадение для класса active
+                        renderedHeader = renderedHeader.replace(
+                            `class="{{#if active.${key}}}active{{/if}}"`,
+                            data.active[key] ? 'class="active"' : ''
+                        );
+                        // На случай, если написано просто внутри класса без class=""
+                        renderedHeader = renderedHeader.replace(
+                            `{{#if active.${key}}}active{{/if}}`,
+                            data.active[key] ? 'active' : ''
+                        );
+                    });
+                }
+
+                // ---------------------------------------------------------
+                // 2. Логика авторизации (ТВОЙ НОВЫЙ КОД)
+                // ---------------------------------------------------------
+
+                // А. Обрабатываем конструкцию IF-ELSE ({{#if user}} ... {{else}} ... {{/if}})
+                renderedHeader = renderedHeader.replace(
+                    /\{\{#if user\}\}([\s\S]*?)\{\{else\}\}([\s\S]*?)\{\{\/if\}\}/g,
+                    (match, ifContent, elseContent) => {
+                        return res.locals.user ? ifContent : elseContent;
                     }
+                );
 
-// test
-                    let renderedHeader = header;
-                    if (data.active) {
-                        Object.keys(data.active).forEach(key => {
-                            renderedHeader = renderedHeader.replace(
-                                `class="{{#if active.${key}}}active{{/if}}"`,
-                                data.active[key] ? 'class="active"' : ''
-                            );
-                        });
-                    }
-
-
-                    renderedHeader = renderedHeader.replace(/{{#if.*?}}/g, '');
-                    renderedHeader = renderedHeader.replace(/{{.*?}}/g, '');
-
-
-                    if (res.locals.user) {
-                        renderedHeader = renderedHeader.replace('{{user.username}}', res.locals.user.username);
-                    } else {
-                        renderedHeader = renderedHeader.replace(/{{user\.username}}/g, '');
-                    }
-
-
-                    renderedHeader = renderedHeader.replace(/\{\{#if user\}\}([\s\S]*?)\{\{\/if\}\}/g, (match, content) => {
+                // Б. Обрабатываем обычный IF ({{#if user}} ... {{/if}}) на случай если нет else
+                renderedHeader = renderedHeader.replace(
+                    /\{\{#if user\}\}([\s\S]*?)\{\{\/if\}\}/g,
+                    (match, content) => {
                         return res.locals.user ? content : '';
-                    });
-                    renderedHeader = renderedHeader.replace(/\{\{#else\}\}([\s\S]*?)\{\{\/if\}\}/g, (match, content) => {
-                        return !res.locals.user ? content : '';
-                    });
+                    }
+                );
 
-                    const rendered = renderedHeader + content + footer;
-                    resolve(rendered);
-                });
+                // В. Вставляем имя пользователя
+                if (res.locals.user) {
+                    renderedHeader = renderedHeader.replace(/{{user\.username}}/g, res.locals.user.username);
+                }
+
+                // ---------------------------------------------------------
+                // 3. Очистка мусора
+                // ---------------------------------------------------------
+                // Удаляем все оставшиеся неиспользованные теги {{#if ...}} и {{...}}
+                renderedHeader = renderedHeader.replace(/{{#if.*?}}/g, '');
+                renderedHeader = renderedHeader.replace(/{{.*?}}/g, '');
+
+                // Собираем страницу
+                const rendered = renderedHeader + content + footer;
+                resolve(rendered);
+            });
             });
         });
     });

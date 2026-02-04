@@ -170,7 +170,7 @@
             }
         }
 
-        // Load created courses
+// Load created courses
         async function loadCreatedCourses() {
             try {
                 const response = await fetch('/api/auth/created-courses');
@@ -181,7 +181,7 @@
                     container.innerHTML = data.courses.map(course => `
                         <div class="course-card glass-card hover-scale">
                             <div class="card-img-top">
-                                <img src="${course.image}" alt="${course.title}" style="height: 150px; object-fit: cover;">
+                                <img src="${course.image}" alt="${course.title}" style="height: 150px; object-fit: cover; width: 100%;">
                             </div>
                             <div class="card-body">
                                 <div class="card-meta">
@@ -190,11 +190,16 @@
                                 </div>
                                 <h3 class="course-title">${course.title}</h3>
                                 <p class="instructor">By ${course.instructor}</p>
-                                <div class="card-footer">
+                                <div class="card-footer" style="margin-top: auto;">
                                     <span class="price">$${course.price}</span>
-                                    <div>
-                                        <a href="/item/${course._id}" class="btn-sm" style="margin-right: 5px;">View</a>
-                                        <button class="btn-sm btn-secondary" onclick="editCourse('${course._id}')">Edit</button>
+                                    <div style="display: flex; gap: 5px;">
+                                        <button class="btn-sm btn-secondary" onclick="editCourse('${course._id}')">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+
+                                        <button class="btn-sm" style="background-color: #ef4444; color: white; border: none;" onclick="deleteCourse('${course._id}')">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -207,6 +212,35 @@
                 console.error('Error loading created courses:', error);
             }
         }
+
+        // Delete course function
+        async function deleteCourse(courseId) {
+            // 1. Спрашиваем подтверждение (защита от случайного нажатия)
+            if (!confirm('Are you sure you want to delete this course? This action cannot be undone.')) {
+                return;
+            }
+
+            try {
+                // 2. Отправляем запрос на удаление
+                const response = await fetch(`/api/courses/${courseId}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // 3. Если удалилось успешно — обновляем список
+                    alert('Course deleted successfully');
+                    loadCreatedCourses(); // Перезагружаем список курсов без обновления всей страницы
+                } else {
+                    alert(data.error || 'Failed to delete course');
+                }
+            } catch (error) {
+                console.error('Error deleting course:', error);
+                alert('An error occurred while deleting');
+            }
+        }
+
 
         // Tab switching
         document.querySelectorAll('.profile-tab').forEach(tab => {

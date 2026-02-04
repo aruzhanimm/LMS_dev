@@ -21,7 +21,7 @@
                     </a>
                 </li>
                 <li>
-                    <a href="#" id="logoutBtn" class="icon-btn-danger" title="Logout">
+                    <a href="#" id="logoutBtn" class="icon-btn-danger" title="Logout" onclick="handleLogout(event)">
                         <i class="fas fa-sign-out-alt"></i>
                     </a>
                 </li>
@@ -32,3 +32,27 @@
         </ul>
     </nav>
 </header>
+
+<script>
+    async function handleLogout(event) {
+        event.preventDefault(); // Чтобы ссылка не прыгала вверх страницы
+
+        try {
+            const response = await fetch('/api/auth/logout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (response.ok) {
+                // Если выход успешен, перезагружаем страницу или идем на главную
+                window.location.href = '/login';
+            } else {
+                console.error('Logout failed');
+            }
+        } catch (error) {
+            console.error('Error during logout:', error);
+        }
+    }
+</script>

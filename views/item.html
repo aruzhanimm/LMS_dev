@@ -9,51 +9,41 @@
 </head>
 <body>
 
-
     <main class="container">
         <div class="item-detail">
             <div class="item-header">
-                <h1 id="course-title">Web Development Fundamentals</h1>
+                <h1 id="course-title">Loading...</h1>
                 <div class="item-meta">
-                    <span><i class="fas fa-star" style="color: gold;"></i> 4.8/5.0</span> |
-                    <span><i class="fas fa-clock"></i> 40 hours</span> |
-                    <span><i class="fas fa-users"></i> 1250 students</span>
+                    <span id="meta-rating"><i class="fas fa-star" style="color: gold;"></i> 0.0/5.0</span> |
+                    <span id="meta-duration"><i class="fas fa-clock"></i> 0 hours</span> |
+                    <span id="meta-students"><i class="fas fa-users"></i> 0 students</span> |
+                    <span id="meta-level" style="color: var(--primary-purple); font-weight: bold;"></span>
                 </div>
             </div>
 
             <div style="margin: 2rem 0;">
-                <img src="/images/placeholder.jpg" alt="Course Image" style="width: 100%; height: 300px; object-fit: cover; border-radius: 10px;">
+                <img id="course-image" src="/images/placeholder.jpg" alt="Course Image" style="width: 100%; height: 300px; object-fit: cover; border-radius: 10px;">
             </div>
 
             <h2>Course Description</h2>
-            <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
-
-            <p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
-
-            <h2 style="margin-top: 2rem;">What You'll Learn</h2>
-            <ul style="margin-left: 2rem; margin-top: 1rem;">
-                <li>HTML5 and Semantic Web Structure</li>
-                <li>CSS3 and Modern Layout Techniques</li>
-                <li>JavaScript Fundamentals</li>
-                <li>Responsive Web Design</li>
-                <li>Basic Backend Concepts</li>
-                <li>Version Control with Git</li>
-            </ul>
+            <p id="course-description" style="white-space: pre-wrap; line-height: 1.6; color: #333;">
+                Loading description...
+            </p>
 
             <h2 style="margin-top: 2rem;">Instructor</h2>
             <div style="display: flex; align-items: center; gap: 1rem; margin-top: 1rem;">
-                <div style="width: 60px; height: 60px; background: var(--primary-purple); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
-                    AJ
+                <div style="width: 60px; height: 60px; background: var(--primary-purple); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: white;">
+                    <i class="fas fa-chalkboard-teacher"></i>
                 </div>
                 <div>
-                    <h3>Alex Johnson</h3>
-                    <p>Senior Web Developer with 10+ years experience</p>
+                    <h3 id="instructor-name">Instructor Name</h3>
+                    <p id="instructor-category" style="color: gray;">Instructor</p>
                 </div>
             </div>
 
             <div style="margin-top: 3rem; text-align: center;">
-                <a href="/contact" class="btn" style="padding: 1rem 3rem;">
-                    <i class="fas fa-enroll"></i> Enroll Now
+                <a href="#" id="enroll-btn" class="btn" style="padding: 1rem 3rem;">
+                    <i class="fas fa-user-plus"></i> Enroll Now <span id="course-price"></span>
                 </a>
                 <a href="/search?q=courses" class="btn btn-secondary" style="margin-left: 1rem;">
                     Browse More Courses
@@ -64,62 +54,72 @@
 
     <script>
     async function loadCourse() {
+        // Получаем ID курса из URL (например, /item/65b2f...)
         const pathParts = window.location.pathname.split('/');
         const courseId = pathParts[pathParts.length - 1];
 
         try {
             const response = await fetch(`/api/courses/${courseId}`);
+
+            if (!response.ok) {
+                document.querySelector('.container').innerHTML = '<h2>Course not found</h2>';
+                return;
+            }
+
             const course = await response.json();
 
-            if (response.ok) {
+            // 1. Заполняем Заголовок
+            document.getElementById('course-title').textContent = course.title;
 
-                document.getElementById('course-title').textContent = course.title;
-                document.querySelector('.item-meta span:nth-child(1)').innerHTML =
-                    `<i class="fas fa-star" style="color: gold;"></i> ${course.rating || 4.8}/5.0`;
-                document.querySelector('.item-meta span:nth-child(2)').innerHTML =
-                    `<i class="fas fa-clock"></i> ${course.duration || '40 hours'}`;
-                document.querySelector('.item-meta span:nth-child(3)').innerHTML =
-                    `<i class="fas fa-users"></i> ${course.enrolledCount || 0} students`;
+            // 2. Заполняем Мета-данные (рейтинг, время, студенты)
+            document.getElementById('meta-rating').innerHTML =
+                `<i class="fas fa-star" style="color: gold;"></i> ${course.rating || 4.8}/5.0`;
 
-                const courseImage = document.querySelector('.item-detail img');
-                courseImage.src = course.image || '/images/placeholder.jpg';
-                courseImage.alt = course.title;
+            document.getElementById('meta-duration').innerHTML =
+                `<i class="fas fa-clock"></i> ${course.duration || 'N/A'}`;
 
-                // Описание курса
-                const descriptionSection = document.querySelector('.item-detail p');
-                if (descriptionSection) {
-                    descriptionSection.textContent = course.description;
-                }
+            document.getElementById('meta-students').innerHTML =
+                `<i class="fas fa-users"></i> ${course.enrolledCount || 0} students`;
 
-                // Информация об инструкторе
-                const instructorSection = document.querySelector('.item-detail h3');
-                if (instructorSection && course.instructor) {
-                    instructorSection.textContent = course.instructor;
-                }
+            document.getElementById('meta-level').textContent = course.level || '';
 
-                // Кнопка записи
-                const enrollButton = document.querySelector('.btn[href="/contact"]');
-                if (enrollButton) {
-                    enrollButton.innerHTML = '<i class="fas fa-user-plus"></i> Enroll Now';
-                    enrollButton.onclick = (e) => {
-                        e.preventDefault();
-                        enrollInCourse(courseId);
-                    };
-                }
+            // 3. Заполняем Картинку
+            const imgElement = document.getElementById('course-image');
+            imgElement.src = course.image || '/images/placeholder.jpg';
+            imgElement.alt = course.title;
 
-                // Проверяем, записан ли пользователь
-                const userResponse = await fetch('/api/auth/me');
-                if (userResponse.ok) {
-                    const userData = await userResponse.json();
-                    if (userData.user) {
-                        // Можно добавить логику для проверки записи на курс
-                    }
-                }
+            // 4. Заполняем Описание (Самое важное!)
+            // Используем textContent для безопасности
+            document.getElementById('course-description').textContent = course.description;
+
+            // 5. Заполняем Инструктора и Цену
+            document.getElementById('instructor-name').textContent = course.instructor;
+            document.getElementById('instructor-category').textContent = 'Category: ' + course.category;
+
+            const priceText = course.price > 0 ? `($${course.price})` : '(Free)';
+            document.getElementById('course-price').textContent = priceText;
+
+            // 6. Настраиваем кнопку записи
+            const enrollBtn = document.getElementById('enroll-btn');
+
+            // Проверяем, залогинен ли пользователь, чтобы скрыть кнопку или изменить действие
+            const authResponse = await fetch('/api/auth/me');
+            if (authResponse.ok) {
+                const { user } = await authResponse.json();
+
+                // Проверяем, записан ли уже студент (нужен доп запрос, но пока упростим)
+                enrollBtn.onclick = (e) => {
+                    e.preventDefault();
+                    enrollInCourse(courseId);
+                };
             } else {
-                console.error('Course not found');
+                // Если не залогинен -> на страницу входа
+                enrollBtn.href = '/login';
             }
+
         } catch (error) {
             console.error('Error loading course:', error);
+            document.querySelector('.container').innerHTML = '<h2>Error loading course details</h2>';
         }
     }
 
@@ -133,8 +133,7 @@
 
             if (response.ok) {
                 alert('Successfully enrolled in the course!');
-                // Обновляем счетчик
-                loadCourse();
+                window.location.reload(); // Перезагрузить страницу, чтобы обновить счетчик
             } else {
                 if (response.status === 401) {
                     window.location.href = '/login';
@@ -150,6 +149,6 @@
 
 
     loadCourse();
-</script>
+    </script>
 </body>
 </html>
