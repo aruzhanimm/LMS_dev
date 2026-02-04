@@ -236,16 +236,30 @@
         }
 
 
-        const categoryFilters = document.querySelectorAll('.filter-group input[type="checkbox"]:checked');
-        categoryFilters.forEach(cb => {
-            const category = cb.closest('.checkbox-container').textContent.trim();
-            params.append('category', category);
+        const allCheckboxes = document.querySelectorAll('.filter-group input[type="checkbox"]:checked');
+
+        allCheckboxes.forEach(cb => {
+            const groupTitle = cb.closest('.filter-group').querySelector('h3').textContent.trim();
+            const value = cb.closest('.checkbox-container').textContent.trim();
+
+            // Если галочка в группе "Categories"
+            if (groupTitle.includes('Categories')) {
+                params.append('category', value);
+            }
+            // Если галочка в группе "Level"
+            else if (groupTitle.includes('Level')) {
+                params.append('level', value); // Отправляем как 'level', а не 'category'
+            }
         });
 
+        // -------------------------
+
         try {
+            // Отправляем запрос на сервер
             const response = await fetch(`/api/courses?${params.toString()}`);
             const data = await response.json();
 
+            // ... (дальше твой код отрисовки без изменений) ...
             const grid = document.getElementById('coursesGrid');
             const countElement = document.getElementById('count');
 
@@ -265,6 +279,8 @@
                             </div>
                             <h3 class="course-title">${course.title}</h3>
                             <p class="instructor">By ${course.instructor}</p>
+                             <div style="font-size: 0.8rem; color: var(--primary-purple); margin-bottom: 5px;">${course.level || ''}</div>
+
                             <div class="card-footer">
                                 <span class="price">$${course.price || 19.99}</span>
                                 <div>
@@ -288,7 +304,6 @@
             console.error('Error loading courses:', error);
         }
     }
-
 
     let searchTimeout;
     document.getElementById('searchInput').addEventListener('input', function(e) {

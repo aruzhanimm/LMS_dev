@@ -31,12 +31,32 @@ router.get('/', async (req, res) => {
 
 
     const filter = {};
+
+    // 1. Фильтр по Категории (может быть одна или несколько)
     if (req.query.category) {
-        filter.category = req.query.category;
+        // Если пришло несколько категорий (массив), используем $in
+        if (Array.isArray(req.query.category)) {
+            filter.category = { $in: req.query.category };
+        } else {
+            filter.category = req.query.category;
+        }
     }
+
+    // 2. ДОБАВЛЯЕМ Фильтр по Уровню (Beginner, Intermediate...)
+    if (req.query.level) {
+        if (Array.isArray(req.query.level)) {
+            filter.level = { $in: req.query.level };
+        } else {
+            filter.level = req.query.level;
+        }
+    }
+
+    // 3. Фильтр по Инструктору
     if (req.query.instructor) {
         filter.instructor = { $regex: req.query.instructor, $options: 'i' };
     }
+
+    // 4. Поиск (Search)
     if (req.query.search) {
         filter.$or = [
             { title: { $regex: req.query.search, $options: 'i' } },
