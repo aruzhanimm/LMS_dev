@@ -24,18 +24,18 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
 
+app.set('trust proxy', 1);
 
 app.use(session({
     secret: 'edusphere-secret-key',
     resave: false,
     saveUninitialized: false,
     cookie: {
-        httpOnly: true,
-        // secure: true,
-        maxAge: 1000 * 60 * 60 * 24
+        httpOnly: true, // XSS
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 1000 * 60 * 60 * 24 // 24 часа
     }
 }));
-
 
 app.use((req, res, next) => {
 
