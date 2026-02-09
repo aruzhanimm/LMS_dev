@@ -238,5 +238,62 @@ router.get('/my-students', requireAuth, requireRole(['professor']), async (req, 
         res.status(500).json({ error: "Could not fetch students" });
     }
 });
+// Получение списка студентов для профессора
+router.get('/my-students', requireAuth, requireRole(['professor']), async (req, res) => {
+    const db = getDb();
 
+    try {
+        // 1. Находим все курсы, которые создал текущий профессор
+        const myCourses = await db.collection('courses')
+            .find({ createdBy: req.session.user.userId })
+            .toArray();
+
+        if (myCourses.length === 0) {
+            return res.json({ students: [] });
+        }
+
+        // Собираем ID этих курсов
+        const myCourseIds = myCourses.map(c => c._id); // Это массив ObjectId
+
+        // 2. Находим все записи (enrollments) на эти курсы
+        // Ищем записи, где courseId входит в список моих курсов
+        const enrollments = await db.collection('enrollments')
+            .find({ courseId: { $in: myCourseIds } })
+            .toArray();
+
+        if (enrollments.length === 0) {
+            return res.json({ students: [] });
+        }
+
+        // 3. Собираем данные студентов
+        const studentsData = [];
+
+        for (const enrollment of enrollments) {
+            // Находим данные студента по ID из записи
+            const student = await db.collection('users').findOne(
+                { _id: new ObjectId(enrollment.userId) },
+                { projection: { password: 0 } } // Не отправляем пароль!
+            );
+
+            // Находим название курса, чтобы показать "На какой курс записан"
+            const course = myCourses.find(c => c._id.toString() === enrollment.courseId.toString());
+
+            if (student && course) {
+                studentsData.push({
+                    username: student.username,
+                    email: student.email,
+                    courseTitle: course.title,
+                    enrolledAt: enrollment.enrolledAt,
+                    progress: enrollment.progress || 0
+                });
+            }
+        }
+
+        res.status(200).json({ students: studentsData });
+
+    } catch (err) {
+        console.error('Error fetching students:', err);
+        res.status(500).json({ error: "Could not fetch students" });
+    }
+});
 module.exports = router;

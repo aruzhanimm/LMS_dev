@@ -5,6 +5,9 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+
+// Проверь название папки! Обычно middleware (без s), но если у тебя middlewares, оставь как было.
+// Я использую '../middleware/roles' т.к. мы создавали папку middleware ранее.
 const { requireAuth, requireRole } = require('../middlewares/roles');
 
 const storage = multer.diskStorage({
@@ -26,16 +29,12 @@ const upload = multer({
     limits: { fileSize: 5 * 1024 * 1024 }
 });
 
-
+// --- GET ALL COURSES (Без изменений) ---
 router.get('/', async (req, res) => {
     const db = getDb();
-
-
     const filter = {};
 
-    // 1. Фильтр по Категории (может быть одна или несколько)
     if (req.query.category) {
-        // Если пришло несколько категорий (массив), используем $in
         if (Array.isArray(req.query.category)) {
             filter.category = { $in: req.query.category };
         } else {
@@ -43,7 +42,6 @@ router.get('/', async (req, res) => {
         }
     }
 
-    // 2. ДОБАВЛЯЕМ Фильтр по Уровню (Beginner, Intermediate...)
     if (req.query.level) {
         if (Array.isArray(req.query.level)) {
             filter.level = { $in: req.query.level };
@@ -52,12 +50,10 @@ router.get('/', async (req, res) => {
         }
     }
 
-    // 3. Фильтр по Инструктору
     if (req.query.instructor) {
         filter.instructor = { $regex: req.query.instructor, $options: 'i' };
     }
 
-    // 4. Поиск (Search)
     if (req.query.search) {
         filter.$or = [
             { title: { $regex: req.query.search, $options: 'i' } },
@@ -66,24 +62,16 @@ router.get('/', async (req, res) => {
         ];
     }
 
-
     let sort = {};
     if (req.query.sort) {
-        if (req.query.sort === 'newest') {
-            sort.createdAt = -1;
-        } else if (req.query.sort === 'popular') {
-            sort.enrolledCount = -1;
-        } else if (req.query.sort === 'rating') {
-            sort.rating = -1;
-        } else if (req.query.sort === 'price_asc') {
-            sort.price = 1;
-        } else if (req.query.sort === 'price_desc') {
-            sort.price = -1;
-        }
+        if (req.query.sort === 'newest') sort.createdAt = -1;
+        else if (req.query.sort === 'popular') sort.enrolledCount = -1;
+        else if (req.query.sort === 'rating') sort.rating = -1;
+        else if (req.query.sort === 'price_asc') sort.price = 1;
+        else if (req.query.sort === 'price_desc') sort.price = -1;
     } else {
         sort.createdAt = -1;
     }
-
 
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
@@ -111,7 +99,7 @@ router.get('/', async (req, res) => {
     }
 });
 
-
+// --- GET SINGLE COURSE (ОБНОВЛЕНО: Добавлены уроки и прогресс) ---
 router.get('/:id', async (req, res) => {
     const db = getDb();
 
@@ -120,6 +108,7 @@ router.get('/:id', async (req, res) => {
     }
 
     try {
+        // 1. Ищем курс
         const course = await db.collection('courses')
             .findOne({ _id: new ObjectId(req.params.id) });
 
@@ -127,24 +116,91 @@ router.get('/:id', async (req, res) => {
             return res.status(404).json({ error: "Course not found" });
         }
 
-        res.status(200).json(course);
+        // 2. Ищем уроки (RELATIONS!)
+        const lessons = await db.collection('lessons')
+            .find({ courseId: new ObjectId(req.params.id) })
+            .sort({ order: 1 })
+            .toArray();
+
+        // 3. Ищем прогресс (LOGIC!)
+        let userProgress = { isEnrolled: false, percent: 0, completedLessonIds: [] };
+
+        if (req.session.user) {
+            const enrollment = await db.collection('enrollments').findOne({
+                userId: req.session.user.userId,
+                courseId: new ObjectId(req.params.id)
+            });
+
+            if (enrollment) {
+                userProgress.isEnrolled = true;
+                userProgress.percent = enrollment.progress || 0;
+                userProgress.completedLessonIds = enrollment.completedLessons || [];
+            }
+        }
+
+        res.status(200).json({
+            ...course,
+            lessons,
+            userProgress
+        });
+
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: "Internal server error" });
     }
 });
 
-// Защищаем создание курса только для профессоров
-router.post('/', requireAuth, requireRole(['professor']), upload.single('image'), async (req, res) => {
-        const db = getDb();
+// --- MARK LESSON COMPLETE (НОВОЕ: Логика прогресса) ---
+router.post('/:courseId/complete/:lessonId', requireAuth, async (req, res) => {
+    const db = getDb();
+    const { courseId, lessonId } = req.params;
 
+    try {
+        const enrollment = await db.collection('enrollments').findOne({
+            userId: req.session.user.userId,
+            courseId: new ObjectId(courseId)
+        });
+
+        if (!enrollment) return res.status(403).json({ error: "Not enrolled" });
+
+        // Добавляем урок в массив завершенных
+        await db.collection('enrollments').updateOne(
+            { _id: enrollment._id },
+            { $addToSet: { completedLessons: lessonId } }
+        );
+
+        // Пересчитываем %
+        const totalLessons = await db.collection('lessons').countDocuments({ courseId: new ObjectId(courseId) });
+
+        // Получаем обновленную запись
+        const updatedEnrollment = await db.collection('enrollments').findOne({ _id: enrollment._id });
+        const completedCount = updatedEnrollment.completedLessons ? updatedEnrollment.completedLessons.length : 0;
+
+        // Считаем
+        const newProgress = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
+
+        // Сохраняем
+        await db.collection('enrollments').updateOne(
+            { _id: enrollment._id },
+            { $set: { progress: newProgress } }
+        );
+
+        res.json({ success: true, newProgress });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Error updating progress" });
+    }
+});
+
+// --- CREATE COURSE (Professor Only) ---
+router.post('/', requireAuth, requireRole(['professor']), upload.single('image'), async (req, res) => {
+    const db = getDb();
 
     if (!req.session || !req.session.user) {
         return res.status(401).json({ error: "Unauthorized" });
     }
 
     const { title, description, category, instructor, price, duration, level } = req.body;
-
 
     if (!title || !description || !category || !instructor) {
         return res.status(400).json({ error: "Missing required fields" });
@@ -168,7 +224,6 @@ router.post('/', requireAuth, requireRole(['professor']), upload.single('image')
 
     try {
         const result = await db.collection('courses').insertOne(course);
-
         res.status(201).json({
             message: "Course created successfully",
             id: result.insertedId,
@@ -180,26 +235,20 @@ router.post('/', requireAuth, requireRole(['professor']), upload.single('image')
     }
 });
 
-// Защищаем обновление и удаление курса
+// --- UPDATE COURSE (Professor Only) ---
 router.put('/:id', requireAuth, requireRole(['professor']), upload.single('image'), async (req, res) => {
     const db = getDb();
-
-    if (!req.session || !req.session.user) {
-        return res.status(401).json({ error: "Unauthorized" });
-    }
 
     if (!ObjectId.isValid(req.params.id)) {
         return res.status(400).json({ error: "Not a valid ID" });
     }
 
     const updates = req.body;
-
     if (req.file) {
         updates.image = `/uploads/${req.file.filename}`;
     }
 
     try {
-
         const course = await db.collection('courses').findOne({
             _id: new ObjectId(req.params.id),
             createdBy: req.session.user.userId
@@ -225,19 +274,15 @@ router.put('/:id', requireAuth, requireRole(['professor']), upload.single('image
     }
 });
 
+// --- DELETE COURSE (Professor Only) ---
 router.delete('/:id', requireAuth, requireRole(['professor']), async (req, res) => {
-        const db = getDb();
-
-    if (!req.session || !req.session.user) {
-        return res.status(401).json({ error: "Unauthorized" });
-    }
+    const db = getDb();
 
     if (!ObjectId.isValid(req.params.id)) {
         return res.status(400).json({ error: "Not a valid ID" });
     }
 
     try {
-
         const course = await db.collection('courses').findOne({
             _id: new ObjectId(req.params.id),
             createdBy: req.session.user.userId
@@ -255,33 +300,26 @@ router.delete('/:id', requireAuth, requireRole(['professor']), async (req, res) 
             return res.status(404).json({ error: "Course not found" });
         }
 
-
-        await db.collection('enrollments').deleteMany({
-            courseId: new ObjectId(req.params.id)
-        });
+        // Удаляем уроки и записи
+        await db.collection('enrollments').deleteMany({ courseId: new ObjectId(req.params.id) });
+        await db.collection('lessons').deleteMany({ courseId: new ObjectId(req.params.id) });
 
         res.status(200).json({ message: "Course deleted successfully" });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: "Could not delete course" });
     }
-
 });
 
-// Запись на курс только для студентов
+// --- ENROLL (Student Only) (ОБНОВЛЕНО: инициализация completedLessons) ---
 router.post('/:id/enroll', requireAuth, requireRole(['student']), async (req, res) => {
     const db = getDb();
-
-    if (!req.session || !req.session.user) {
-        return res.status(401).json({ error: "Please login to enroll" });
-    }
 
     if (!ObjectId.isValid(req.params.id)) {
         return res.status(400).json({ error: "Not a valid ID" });
     }
 
     try {
-
         const enrollment = await db.collection('enrollments').findOne({
             userId: req.session.user.userId,
             courseId: new ObjectId(req.params.id)
@@ -291,16 +329,15 @@ router.post('/:id/enroll', requireAuth, requireRole(['student']), async (req, re
             return res.status(400).json({ error: "Already enrolled in this course" });
         }
 
-
         const enrollmentData = {
             userId: req.session.user.userId,
             courseId: new ObjectId(req.params.id),
             enrolledAt: new Date(),
-            progress: 0
+            progress: 0,
+            completedLessons: [] // <-- ВАЖНО для логики прогресса
         };
 
         await db.collection('enrollments').insertOne(enrollmentData);
-
 
         await db.collection('courses').updateOne(
             { _id: new ObjectId(req.params.id) },
@@ -313,7 +350,5 @@ router.post('/:id/enroll', requireAuth, requireRole(['student']), async (req, re
         res.status(500).json({ error: "Could not enroll in course" });
     }
 });
-
-
 
 module.exports = router;
