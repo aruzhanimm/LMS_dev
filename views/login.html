@@ -76,36 +76,41 @@
 
 
     <script>
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
+       // В login.html обновляем обработчик формы:
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
 
-            const formData = {
-                email: document.getElementById('loginEmail').value,
-                password: document.getElementById('loginPassword').value
-            };
+    const formData = {
+        email: document.getElementById('loginEmail').value,
+        password: document.getElementById('loginPassword').value
+    };
 
-            try {
-                const response = await fetch('/api/auth/login', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(formData)
-                });
-
-                const data = await response.json();
-
-                if (response.ok) {
-                    window.location.href = '/profile';
-                } else {
-                    document.getElementById('loginMessage').textContent = data.error;
-                    document.getElementById('loginMessage').style.color = '#ff6b6b';
-                }
-            } catch (error) {
-                document.getElementById('loginMessage').textContent = 'An error occurred';
-                document.getElementById('loginMessage').style.color = '#ff6b6b';
-            }
+    try {
+        const response = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
         });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            if (data.requiresRole) {
+                window.location.href = '/choose-role';
+            } else {
+                window.location.href = '/profile';
+            }
+        } else {
+            document.getElementById('loginMessage').textContent = data.error;
+            document.getElementById('loginMessage').style.color = '#ff6b6b';
+        }
+    } catch (error) {
+        document.getElementById('loginMessage').textContent = 'An error occurred';
+        document.getElementById('loginMessage').style.color = '#ff6b6b';
+    }
+});
     </script>
 </body>
 </html>

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Choose Role - EduSphere LMS</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .role-container {
+            max-width: 500px;
+            margin: 4rem auto;
+            padding: 2rem;
+        }
+        .role-options {
+            display: flex;
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+        .role-card {
+            flex: 1;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .role-card:hover {
+            transform: translateY(-5px);
+        }
+        .role-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: var(--primary-purple);
+        }
+        .role-card.selected {
+            border: 2px solid var(--primary-purple);
+            background: rgba(138, 43, 226, 0.1);
+        }
+    </style>
+</head>
+<body>
+
+    <main class="container">
+        <div class="role-container glass-card">
+            <h1 style="text-align: center;">Welcome Back!</h1>
+            <p style="text-align: center; color: var(--light-gray); margin-bottom: 2rem;">
+                Please select how you want to access the platform
+            </p>
+
+            <div class="role-options">
+                <div class="role-card glass-card-small hover-scale" id="studentCard">
+                    <div class="role-icon">
+                        <i class="fas fa-user-graduate"></i>
+                    </div>
+                    <h3>Student</h3>
+                    <p>Browse courses, enroll, and track your learning progress</p>
+                    <ul style="text-align: left; margin-top: 1rem; font-size: 0.9rem;">
+                        <li> Browse all courses</li>
+                        <li> Enroll in courses</li>
+                        <li> Track progress</li>
+                        <li> Manage profile</li>
+                    </ul>
+                </div>
+
+                <div class="role-card glass-card-small hover-scale" id="professorCard">
+                    <div class="role-icon">
+                        <i class="fas fa-chalkboard-teacher"></i>
+                    </div>
+                    <h3>Professor</h3>
+                    <p>Create courses, manage content, and track student progress</p>
+                    <ul style="text-align: left; margin-top: 1rem; font-size: 0.9rem;">
+                        <li> Create new courses</li>
+                        <li> Edit your courses</li>
+                        <li> View analytics</li>
+                        <li> Manage students</li>
+                    </ul>
+                </div>
+            </div>
+
+            <form id="roleForm" style="margin-top: 2rem;">
+                <input type="hidden" id="selectedRole" name="role" value="">
+
+                <div style="display: flex; gap: 1rem; justify-content: center;">
+                    <button type="submit" class="btn glow-btn" style="min-width: 200px;">
+                        <i class="fas fa-sign-in-alt"></i> Continue as <span id="roleText">Student</span>
+                    </button>
+                    <a href="/logout" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Cancel
+                    </a>
+                </div>
+
+                <p style="text-align: center; margin-top: 1rem; font-size: 0.9rem; color: var(--light-gray);">
+                    You can change your role later in profile settings
+                </p>
+            </form>
+        </div>
+    </main>
+
+    <script>
+        let selectedRole = 'student';
+
+        document.getElementById('studentCard').addEventListener('click', () => {
+            selectRole('student');
+        });
+
+        document.getElementById('professorCard').addEventListener('click', () => {
+            selectRole('professor');
+        });
+
+        function selectRole(role) {
+            selectedRole = role;
+
+            // Update UI
+            document.getElementById('studentCard').classList.remove('selected');
+            document.getElementById('professorCard').classList.remove('selected');
+            document.getElementById(role + 'Card').classList.add('selected');
+
+            // Update form
+            document.getElementById('selectedRole').value = role;
+            document.getElementById('roleText').textContent = role.charAt(0).toUpperCase() + role.slice(1);
+        }
+
+        // Initialize with student selected
+        selectRole('student');
+
+        // Handle form submission
+        document.getElementById('roleForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            try {
+                const response = await fetch('/api/auth/set-role', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ role: selectedRole })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    window.location.href = '/profile';
+                } else {
+                    alert(data.error || 'Error setting role');
+                }
+            } catch (error) {
+                alert('Network error. Please try again.');
+            }
+        });
+    </script>
+</body>
+</html>

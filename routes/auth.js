@@ -2,14 +2,15 @@ const express = require('express');
 const { getDb } = require('../database/db');
 const { ObjectId } = require('mongodb');
 const bcrypt = require('bcryptjs');
+// Импортируем Middleware для роутов my-students
+const { requireAuth, requireRole } = require('../middlewares/roles');
 const router = express.Router();
 
-// Регистрация
+// Регистрация (по умолчанию создаем студента, роль потом можно уточнить)
 router.post('/register', async (req, res) => {
     const db = getDb();
     const { username, email, password } = req.body;
 
-    // Валидация
     if (!username || !email || !password) {
         return res.status(400).json({ error: "All fields are required" });
     }
@@ -19,56 +20,38 @@ router.post('/register', async (req, res) => {
     }
 
     try {
-        // Проверяем, существует ли пользователь
         const existingUser = await db.collection('users').findOne({
             $or: [{ email }, { username }]
         });
 
         if (existingUser) {
-            return res.status(400).json({
-                error: "User with this email or username already exists"
-            });
+            return res.status(400).json({ error: "User already exists" });
         }
 
-        // Хэшируем пароль
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-        // Создаем пользователя
         const user = {
             username,
             email,
             password: hashedPassword,
             createdAt: new Date(),
-            role: 'student',
+            role: null, // Роль пока не выбрана!
             enrolledCourses: []
         };
 
         const result = await db.collection('users').insertOne(user);
 
-        // Создаем сессию
         req.session.user = {
             userId: result.insertedId.toString(),
             username: user.username,
             email: user.email,
-            role: user.role
+            role: null
         };
 
-        // Сохраняем сессию перед отправкой ответа
         req.session.save((err) => {
-            if (err) {
-                console.error('Session save error:', err);
-                return res.status(500).json({ error: "Session error" });
-            }
-
-            res.status(201).json({
-                message: "Registration successful",
-                user: {
-                    id: result.insertedId,
-                    username: user.username,
-                    email: user.email
-                }
-            });
+            if (err) return res.status(500).json({ error: "Session error" });
+            res.status(201).json({ message: "Registration successful" });
         });
 
     } catch (err) {
@@ -77,7 +60,7 @@ router.post('/register', async (req, res) => {
     }
 });
 
-// Вход
+// ВХОД (ОБНОВЛЕННАЯ ЛОГИКА)
 router.post('/login', async (req, res) => {
     const db = getDb();
     const { email, password } = req.body;
@@ -87,33 +70,34 @@ router.post('/login', async (req, res) => {
     }
 
     try {
-        // Находим пользователя
         const user = await db.collection('users').findOne({ email });
 
         if (!user) {
             return res.status(401).json({ error: "Invalid credentials" });
         }
 
-        // Проверяем пароль
         const isValidPassword = await bcrypt.compare(password, user.password);
 
         if (!isValidPassword) {
             return res.status(401).json({ error: "Invalid credentials" });
         }
 
-        // Создаем сессию
         req.session.user = {
             userId: user._id.toString(),
             username: user.username,
             email: user.email,
-            role: user.role
+            role: user.role || null
         };
 
-        // Сохраняем сессию
         req.session.save((err) => {
-            if (err) {
-                console.error('Session save error:', err);
-                return res.status(500).json({ error: "Session error" });
+            if (err) return res.status(500).json({ error: "Session error" });
+
+            // ВАЖНО: Если роли нет, отправляем флаг requiresRole
+            if (!user.role) {
+                return res.status(200).json({
+                    message: "Login successful",
+                    requiresRole: true
+                });
             }
 
             res.status(200).json({
@@ -136,30 +120,44 @@ router.post('/login', async (req, res) => {
 // Выход
 router.post('/logout', (req, res) => {
     req.session.destroy((err) => {
-        if (err) {
-            return res.status(500).json({ error: "Logout failed" });
-        }
+        if (err) return res.status(500).json({ error: "Logout failed" });
         res.clearCookie('connect.sid');
         res.status(200).json({ message: "Logout successful" });
     });
 });
 
-// Проверка текущего пользователя
-router.get('/me', (req, res) => {
-    if (!req.session.user) {
-        return res.status(401).json({ error: "Not authenticated" });
+// Установка роли
+router.post('/set-role', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: "Not authenticated" });
+
+    const { role } = req.body;
+    if (!['student', 'professor'].includes(role)) {
+        return res.status(400).json({ error: "Invalid role" });
     }
 
-    res.status(200).json({ user: req.session.user });
+    // Обновляем сессию
+    req.session.user.role = role;
+
+    // Обновляем БД
+    const db = getDb();
+    await db.collection('users').updateOne(
+        { _id: new ObjectId(req.session.user.userId) },
+        { $set: { role: role } }
+    );
+
+    res.status(200).json({ message: "Role updated", role: role });
 });
 
-// Получение курсов пользователя
+// Текущий пользователь
+router.get('/me', (req, res) => {
+    if (!req.session.user) return res.status(401).json({ error: "Not authenticated" });
+    res.status(200).json({ user: req.session.user, role: req.session.user.role });
+});
+
+// Курсы студента
 router.get('/my-courses', async (req, res) => {
     const db = getDb();
-
-    if (!req.session.user) {
-        return res.status(401).json({ error: "Not authenticated" });
-    }
+    if (!req.session.user) return res.status(401).json({ error: "Not authenticated" });
 
     try {
         const enrollments = await db.collection('enrollments')
@@ -167,12 +165,10 @@ router.get('/my-courses', async (req, res) => {
             .toArray();
 
         const courseIds = enrollments.map(e => new ObjectId(e.courseId));
-
         const courses = await db.collection('courses')
             .find({ _id: { $in: courseIds } })
             .toArray();
 
-        // Добавляем информацию о прогрессе
         const coursesWithProgress = courses.map(course => {
             const enrollment = enrollments.find(e => e.courseId.toString() === course._id.toString());
             return {
@@ -184,29 +180,62 @@ router.get('/my-courses', async (req, res) => {
 
         res.status(200).json({ courses: coursesWithProgress });
     } catch (err) {
-        console.error(err);
         res.status(500).json({ error: "Could not fetch courses" });
     }
 });
 
-// Получение созданных курсов пользователя
+// Курсы созданные профессором
 router.get('/created-courses', async (req, res) => {
     const db = getDb();
-
-    if (!req.session.user) {
-        return res.status(401).json({ error: "Not authenticated" });
-    }
+    if (!req.session.user) return res.status(401).json({ error: "Not authenticated" });
 
     try {
         const courses = await db.collection('courses')
             .find({ createdBy: req.session.user.userId })
             .sort({ createdAt: -1 })
             .toArray();
-
         res.status(200).json({ courses });
     } catch (err) {
-        console.error(err);
         res.status(500).json({ error: "Could not fetch courses" });
+    }
+});
+
+// Список студентов (Только для профессора)
+router.get('/my-students', requireAuth, requireRole(['professor']), async (req, res) => {
+    const db = getDb();
+    try {
+        const courses = await db.collection('courses')
+            .find({ createdBy: req.session.user.userId })
+            .toArray();
+
+        const courseIds = courses.map(course => course._id.toString());
+
+        const enrollments = await db.collection('enrollments')
+            .find({ courseId: { $in: courseIds } })
+            .toArray();
+
+        const students = [];
+        for (const enrollment of enrollments) {
+            const student = await db.collection('users').findOne({
+                _id: new ObjectId(enrollment.userId),
+                role: 'student'
+            });
+
+            const course = courses.find(c => c._id.toString() === enrollment.courseId.toString());
+
+            if (student && course) {
+                students.push({
+                    username: student.username,
+                    email: student.email,
+                    courseTitle: course.title,
+                    enrolledAt: enrollment.enrolledAt,
+                    progress: enrollment.progress || 0
+                });
+            }
+        }
+        res.status(200).json({ students });
+    } catch (err) {
+        res.status(500).json({ error: "Could not fetch students" });
     }
 });
 

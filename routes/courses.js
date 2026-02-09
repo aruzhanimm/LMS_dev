@@ -5,6 +5,7 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { requireAuth, requireRole } = require('../middlewares/roles');
 
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -133,9 +134,9 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-
-router.post('/', upload.single('image'), async (req, res) => {
-    const db = getDb();
+// Защищаем создание курса только для профессоров
+router.post('/', requireAuth, requireRole(['professor']), upload.single('image'), async (req, res) => {
+        const db = getDb();
 
 
     if (!req.session || !req.session.user) {
@@ -179,8 +180,96 @@ router.post('/', upload.single('image'), async (req, res) => {
     }
 });
 
+// Защищаем обновление и удаление курса
+router.put('/:id', requireAuth, requireRole(['professor']), upload.single('image'), async (req, res) => {
+    const db = getDb();
 
-router.post('/:id/enroll', async (req, res) => {
+    if (!req.session || !req.session.user) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    if (!ObjectId.isValid(req.params.id)) {
+        return res.status(400).json({ error: "Not a valid ID" });
+    }
+
+    const updates = req.body;
+
+    if (req.file) {
+        updates.image = `/uploads/${req.file.filename}`;
+    }
+
+    try {
+
+        const course = await db.collection('courses').findOne({
+            _id: new ObjectId(req.params.id),
+            createdBy: req.session.user.userId
+        });
+
+        if (!course) {
+            return res.status(403).json({ error: "Not authorized to update this course" });
+        }
+
+        const result = await db.collection('courses').updateOne(
+            { _id: new ObjectId(req.params.id) },
+            { $set: updates }
+        );
+
+        if (result.matchedCount === 0) {
+            return res.status(404).json({ error: "Course not found" });
+        }
+
+        res.status(200).json({ message: "Course updated successfully" });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Could not update course" });
+    }
+});
+
+router.delete('/:id', requireAuth, requireRole(['professor']), async (req, res) => {
+        const db = getDb();
+
+    if (!req.session || !req.session.user) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    if (!ObjectId.isValid(req.params.id)) {
+        return res.status(400).json({ error: "Not a valid ID" });
+    }
+
+    try {
+
+        const course = await db.collection('courses').findOne({
+            _id: new ObjectId(req.params.id),
+            createdBy: req.session.user.userId
+        });
+
+        if (!course) {
+            return res.status(403).json({ error: "Not authorized to delete this course" });
+        }
+
+        const result = await db.collection('courses').deleteOne({
+            _id: new ObjectId(req.params.id)
+        });
+
+        if (result.deletedCount === 0) {
+            return res.status(404).json({ error: "Course not found" });
+        }
+
+
+        await db.collection('enrollments').deleteMany({
+            courseId: new ObjectId(req.params.id)
+        });
+
+        res.status(200).json({ message: "Course deleted successfully" });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Could not delete course" });
+    }
+
+});
+
+// Запись на курс только для студентов
+router.post('/:id/enroll', requireAuth, requireRole(['student']), async (req, res) => {
     const db = getDb();
 
     if (!req.session || !req.session.user) {
@@ -226,91 +315,5 @@ router.post('/:id/enroll', async (req, res) => {
 });
 
 
-router.put('/:id', upload.single('image'), async (req, res) => {
-    const db = getDb();
-
-    if (!req.session || !req.session.user) {
-        return res.status(401).json({ error: "Unauthorized" });
-    }
-
-    if (!ObjectId.isValid(req.params.id)) {
-        return res.status(400).json({ error: "Not a valid ID" });
-    }
-
-    const updates = req.body;
-
-    if (req.file) {
-        updates.image = `/uploads/${req.file.filename}`;
-    }
-
-    try {
-
-        const course = await db.collection('courses').findOne({
-            _id: new ObjectId(req.params.id),
-            createdBy: req.session.user.userId
-        });
-
-        if (!course) {
-            return res.status(403).json({ error: "Not authorized to update this course" });
-        }
-
-        const result = await db.collection('courses').updateOne(
-            { _id: new ObjectId(req.params.id) },
-            { $set: updates }
-        );
-
-        if (result.matchedCount === 0) {
-            return res.status(404).json({ error: "Course not found" });
-        }
-
-        res.status(200).json({ message: "Course updated successfully" });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: "Could not update course" });
-    }
-});
-
-
-router.delete('/:id', async (req, res) => {
-    const db = getDb();
-
-    if (!req.session || !req.session.user) {
-        return res.status(401).json({ error: "Unauthorized" });
-    }
-
-    if (!ObjectId.isValid(req.params.id)) {
-        return res.status(400).json({ error: "Not a valid ID" });
-    }
-
-    try {
-
-        const course = await db.collection('courses').findOne({
-            _id: new ObjectId(req.params.id),
-            createdBy: req.session.user.userId
-        });
-
-        if (!course) {
-            return res.status(403).json({ error: "Not authorized to delete this course" });
-        }
-
-        const result = await db.collection('courses').deleteOne({
-            _id: new ObjectId(req.params.id)
-        });
-
-        if (result.deletedCount === 0) {
-            return res.status(404).json({ error: "Course not found" });
-        }
-
-
-        await db.collection('enrollments').deleteMany({
-            courseId: new ObjectId(req.params.id)
-        });
-
-        res.status(200).json({ message: "Course deleted successfully" });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: "Could not delete course" });
-    }
-});
 
 module.exports = router;

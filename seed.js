@@ -80,6 +80,21 @@ const initialCourses = [
         createdByName: "System"
     },
     {
+        title: "Google Ads Certification",
+        description: "Complete guide to Google Ads. Learn to set up, manage, and optimize profitable campaigns.",
+        category: "Marketing",
+        instructor: "Isaac Rudansky",
+        price: 29.99,
+        duration: "18 hours",
+        level: "Intermediate",
+        rating: 4.7,
+        enrolledCount: 750,
+        image: "/images/c7.jpg",
+        createdAt: new Date(),
+        createdBy: null,
+        createdByName: "System"
+    },
+    {
         title: "Cybersecurity Fundamentals",
         description: "Understand cybersecurity principles, threat detection, and security best practices for web applications.",
         category: "Security",
@@ -115,16 +130,26 @@ async function seedDatabase() {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash('password123', salt);
 
-        const testUser = {
-            username: 'testuser',
-            email: 'test@example.com',
-            password: hashedPassword,
-            role: 'student',
-            createdAt: new Date(),
-            enrolledCourses: []
-        };
 
-        await db.collection('users').insertOne(testUser);
+const testUser = {
+    username: 'testuser',
+    email: 'test@example.com',
+    password: hashedPassword,
+    role: 'student',
+    createdAt: new Date(),
+    enrolledCourses: []
+};
+
+const professorUser = {
+    username: 'professor',
+    email: 'professor@example.com',
+    password: await bcrypt.hash('professor123', salt),
+    role: 'professor',
+    createdAt: new Date(),
+    enrolledCourses: []
+};
+
+await db.collection('users').insertMany([testUser, professorUser]);
 
         console.log('Database seeded successfully!');
         console.log('Test user: test@example.com / password123');

@@ -22,3 +22,4 @@ function requireRole(role) {
 }
 
 module.exports = { requireAuth, requireRole };
+// Добавляем в auth.js после logout

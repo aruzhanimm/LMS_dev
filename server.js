@@ -5,10 +5,11 @@ const session = require('express-session');
 const { connectToDb } = require('./database/db');
 const courseRoutes = require('./routes/courses');
 const authRoutes = require('./routes/auth');
+const templateHelpers = require('./utils/templateHelpers');
+
 
 const app = express();
 const PORT = 3000;
-
 
 connectToDb((err) => {
     if (err) {
@@ -31,28 +32,25 @@ app.use(session({
     resave: false,
     saveUninitialized: false,
     cookie: {
-        httpOnly: true, // XSS
+        httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         maxAge: 1000 * 60 * 60 * 24 // 24 часа
     }
 }));
 
 app.use((req, res, next) => {
-
     res.locals.user = req.session.user || null;
     next();
 });
 
-
+// Функция шаблонизатора
 const renderTemplate = (res, templatePath, data = {}) => {
     return new Promise((resolve, reject) => {
-
         fs.readFile(path.join(__dirname, 'views', templatePath), 'utf8', (err, content) => {
             if (err) {
                 reject(err);
                 return;
             }
-
 
             const headerPath = path.join(__dirname, 'views', 'partials', 'header.html');
             const footerPath = path.join(__dirname, 'views', 'partials', 'footer.html');
@@ -64,76 +62,68 @@ const renderTemplate = (res, templatePath, data = {}) => {
                 }
 
                 fs.readFile(footerPath, 'utf8', (err, footer) => {
-                if (err) {
-                    reject(err);
-                    return;
-                }
+                    if (err) {
+                        reject(err);
+                        return;
+                    }
 
-                let renderedHeader = header;
+                    let renderedHeader = header;
 
-                // ---------------------------------------------------------
-                // 1. Сначала обрабатываем активные пункты меню (НЕ ТЕРЯЕМ ЭТО)
-                // ---------------------------------------------------------
-                if (data.active) {
-                    Object.keys(data.active).forEach(key => {
-                        // Ищем точное совпадение для класса active
-                        renderedHeader = renderedHeader.replace(
-                            `class="{{#if active.${key}}}active{{/if}}"`,
-                            data.active[key] ? 'class="active"' : ''
-                        );
-                        // На случай, если написано просто внутри класса без class=""
-                        renderedHeader = renderedHeader.replace(
-                            `{{#if active.${key}}}active{{/if}}`,
-                            data.active[key] ? 'active' : ''
-                        );
+                    // 1. Активные пункты меню
+                    if (data.active) {
+                        Object.keys(data.active).forEach(key => {
+                            renderedHeader = renderedHeader.replace(
+                                `class="{{#if active.${key}}}active{{/if}}"`,
+                                data.active[key] ? 'class="active"' : ''
+                            );
+                            renderedHeader = renderedHeader.replace(
+                                `{{#if active.${key}}}active{{/if}}`,
+                                data.active[key] ? 'active' : ''
+                            );
+                        });
+                    }
+
+                    // 2. Логика авторизации
+                    renderedHeader = renderedHeader.replace(
+                        /\{\{#if user\}\}([\s\S]*?)\{\{else\}\}([\s\S]*?)\{\{\/if\}\}/g,
+                        (match, ifContent, elseContent) => {
+                            return res.locals.user ? ifContent : elseContent;
+                        }
+                    );
+
+                    renderedHeader = renderedHeader.replace(
+                        /\{\{#if user\}\}([\s\S]*?)\{\{\/if\}\}/g,
+                        (match, content) => {
+                            return res.locals.user ? content : '';
+                        }
+                    );
+
+                    if (res.locals.user) {
+                        renderedHeader = renderedHeader.replace(/{{user\.username}}/g, res.locals.user.username);
+                    }
+
+                    // 3. Очистка и Хелперы
+                    renderedHeader = renderedHeader.replace(/{{#if.*?}}/g, '');
+                    renderedHeader = renderedHeader.replace(/{{.*?}}/g, '');
+
+                    Object.keys(templateHelpers).forEach(helper => {
+                        const regex = new RegExp(`{{${helper}\\((.*?)\\)}}`, 'g');
+                        content = content.replace(regex, (match, args) => {
+                            return templateHelpers[helper](...args.split(',').map(arg => arg.trim().replace(/['"]/g, '')));
+                        });
                     });
-                }
 
-                // ---------------------------------------------------------
-                // 2. Логика авторизации (ТВОЙ НОВЫЙ КОД)
-                // ---------------------------------------------------------
-
-                // А. Обрабатываем конструкцию IF-ELSE ({{#if user}} ... {{else}} ... {{/if}})
-                renderedHeader = renderedHeader.replace(
-                    /\{\{#if user\}\}([\s\S]*?)\{\{else\}\}([\s\S]*?)\{\{\/if\}\}/g,
-                    (match, ifContent, elseContent) => {
-                        return res.locals.user ? ifContent : elseContent;
-                    }
-                );
-
-                // Б. Обрабатываем обычный IF ({{#if user}} ... {{/if}}) на случай если нет else
-                renderedHeader = renderedHeader.replace(
-                    /\{\{#if user\}\}([\s\S]*?)\{\{\/if\}\}/g,
-                    (match, content) => {
-                        return res.locals.user ? content : '';
-                    }
-                );
-
-                // В. Вставляем имя пользователя
-                if (res.locals.user) {
-                    renderedHeader = renderedHeader.replace(/{{user\.username}}/g, res.locals.user.username);
-                }
-
-                // ---------------------------------------------------------
-                // 3. Очистка мусора
-                // ---------------------------------------------------------
-                // Удаляем все оставшиеся неиспользованные теги {{#if ...}} и {{...}}
-                renderedHeader = renderedHeader.replace(/{{#if.*?}}/g, '');
-                renderedHeader = renderedHeader.replace(/{{.*?}}/g, '');
-
-                // Собираем страницу
-                const rendered = renderedHeader + content + footer;
-                resolve(rendered);
-            });
+                    const rendered = renderedHeader + content + footer;
+                    resolve(rendered);
+                });
             });
         });
     });
 };
 
-
+// API Routes
 app.use('/api/courses', courseRoutes);
 app.use('/api/auth', authRoutes);
-
 
 app.get('/api/info', (req, res) => {
     res.json({
@@ -145,6 +135,8 @@ app.get('/api/info', (req, res) => {
         }
     });
 });
+
+// --- Page Routes ---
 
 app.get('/', async (req, res) => {
     try {
@@ -159,7 +151,6 @@ app.get('/', async (req, res) => {
 app.get('/about', async (req, res) => {
     try {
         const html = await renderTemplate(res, 'about.html', { active: { about: true } });
-
         res.send(html);
     } catch (error) {
         console.error('Error rendering about:', error);
@@ -167,21 +158,19 @@ app.get('/about', async (req, res) => {
     }
 });
 
-
 app.get('/contact', async (req, res) => {
     try {
         const html = await renderTemplate(res, 'contact.html', { active: { contact: true } });
-    res.send(html);
+        res.send(html);
     } catch (error) {
         console.error('Error rendering contact:', error);
         res.status(500).send('Internal Server Error');
     }
 });
 
-
 app.get('/search', async (req, res) => {
     try {
-        const html = await renderTemplate(res,'search.html', { active: { search: true } });
+        const html = await renderTemplate(res, 'search.html', { active: { search: true } });
         res.send(html);
     } catch (error) {
         console.error('Error rendering search:', error);
@@ -189,13 +178,31 @@ app.get('/search', async (req, res) => {
     }
 });
 
-
-app.get('/login', async (req, res) => {
-    if (req.session.user) {
+app.get('/choose-role', async (req, res) => {
+    if (!req.session.user) {
+        return res.redirect('/login');
+    }
+    if (req.session.user.role) {
         return res.redirect('/profile');
     }
     try {
-        const html = await renderTemplate(res,'login.html', { active: { login: true } });
+        const html = await renderTemplate(res, 'choose-role.html', {});
+        res.send(html);
+    } catch (error) {
+        console.error('Error rendering choose-role:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+app.get('/login', async (req, res) => {
+    if (req.session.user) {
+        if (!req.session.user.role) {
+            return res.redirect('/choose-role');
+        }
+        return res.redirect('/profile');
+    }
+    try {
+        const html = await renderTemplate(res, 'login.html', { active: { login: true } });
         res.send(html);
     } catch (error) {
         console.error('Error rendering login:', error);
@@ -203,13 +210,14 @@ app.get('/login', async (req, res) => {
     }
 });
 
+// --- ЗДЕСЬ БЫЛ УДАЛЕН ОШИБОЧНЫЙ БЛОК КОДА ---
 
 app.get('/register', async (req, res) => {
     if (req.session.user) {
         return res.redirect('/profile');
     }
     try {
-        const html = await renderTemplate(res,'register.html', { active: { register: true } });
+        const html = await renderTemplate(res, 'register.html', { active: { register: true } });
         res.send(html);
     } catch (error) {
         console.error('Error rendering register:', error);
@@ -217,13 +225,12 @@ app.get('/register', async (req, res) => {
     }
 });
 
-
 app.get('/profile', async (req, res) => {
     if (!req.session.user) {
         return res.redirect('/login');
     }
     try {
-        const html = await renderTemplate(res,'profile.html', { active: { profile: true } });
+        const html = await renderTemplate(res, 'profile.html', { active: { profile: true } });
         res.send(html);
     } catch (error) {
         console.error('Error rendering profile:', error);
@@ -231,13 +238,17 @@ app.get('/profile', async (req, res) => {
     }
 });
 
-
 app.get('/add-course', async (req, res) => {
     if (!req.session.user) {
         return res.redirect('/login');
     }
+    // ДОПОЛНИТЕЛЬНАЯ ЗАЩИТА: Если студент пытается зайти сюда вручную
+    if (req.session.user.role !== 'professor') {
+        return res.redirect('/profile');
+    }
+
     try {
-        const html = await renderTemplate(res,'add-course.html', { active: { profile: true } });
+        const html = await renderTemplate(res, 'add-course.html', { active: { profile: true } });
         res.send(html);
     } catch (error) {
         console.error('Error rendering add-course:', error);
@@ -245,10 +256,9 @@ app.get('/add-course', async (req, res) => {
     }
 });
 
-
 app.get('/item/:id', async (req, res) => {
     try {
-        const html = await renderTemplate(res,'item.html', {});
+        const html = await renderTemplate(res, 'item.html', {});
         res.send(html);
     } catch (error) {
         console.error('Error rendering item:', error);
@@ -256,13 +266,9 @@ app.get('/item/:id', async (req, res) => {
     }
 });
 
-
 app.post('/contact', (req, res) => {
     const { name, email, message } = req.body;
-
-
     console.log('Contact form submission:', { name, email, message });
-
     res.redirect('/contact?success=true');
 });
 
