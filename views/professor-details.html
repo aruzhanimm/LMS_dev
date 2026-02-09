@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professor Details - EduSphere</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <main class="container">
+        <div class="glass-card" style="max-width: 600px; margin: 4rem auto; padding: 2rem;">
+            <h2>Complete Your Professor Profile</h2>
+            <p style="color: #aaa; margin-bottom: 2rem;">Please provide details about your expertise.</p>
+
+            <form id="detailsForm">
+                <div class="form-group">
+                    <label>Education / Degree</label>
+                    <input type="text" id="education" class="form-control" required placeholder="e.g. PhD in Computer Science">
+                </div>
+
+                <div class="form-group">
+                    <label>Professional Experience</label>
+                    <input type="text" id="experience" class="form-control" required placeholder="e.g. Senior Developer at Google (5 years)">
+                </div>
+
+                <div class="form-group">
+                    <label>Bio (Short description)</label>
+                    <textarea id="bio" class="form-control" rows="4" required placeholder="Tell students about yourself..."></textarea>
+                </div>
+
+                <button type="submit" class="btn glow-btn" style="width: 100%;">Finish Setup</button>
+            </form>
+        </div>
+    </main>
+
+    <script>
+        document.getElementById('detailsForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const data = {
+                education: document.getElementById('education').value,
+                experience: document.getElementById('experience').value,
+                bio: document.getElementById('bio').value
+            };
+
+            const res = await fetch('/api/auth/professor-details', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            if (res.ok) {
+                window.location.href = '/profile';
+            }
+        });
+    </script>
+</body>
+</html>

@@ -6,10 +6,10 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-// Проверь название папки! Обычно middleware (без s), но если у тебя middlewares, оставь как было.
-// Я использую '../middleware/roles' т.к. мы создавали папку middleware ранее.
+// Middleware для проверки ролей
 const { requireAuth, requireRole } = require('../middlewares/roles');
 
+// Настройка Multer для загрузки картинок курсов
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
         const uploadPath = path.join(__dirname, '..', 'public', 'uploads');
@@ -29,7 +29,7 @@ const upload = multer({
     limits: { fileSize: 5 * 1024 * 1024 }
 });
 
-// --- GET ALL COURSES (Без изменений) ---
+// --- 1. GET ALL COURSES (Получение списка с фильтрами) ---
 router.get('/', async (req, res) => {
     const db = getDb();
     const filter = {};
@@ -99,36 +99,37 @@ router.get('/', async (req, res) => {
     }
 });
 
-// --- GET SINGLE COURSE (ОБНОВЛЕНО: Добавлены уроки и прогресс) ---
+// --- 2. GET SINGLE COURSE (Исправлено: ObjectId, Прогресс, Квиз) ---
 router.get('/:id', async (req, res) => {
     const db = getDb();
+    const courseId = req.params.id;
 
-    if (!ObjectId.isValid(req.params.id)) {
-        return res.status(400).json({ error: "Not a valid ID" });
+    // FIX: Проверка валидности ID перед запросом
+    if (!ObjectId.isValid(courseId)) {
+        return res.status(400).json({ error: "Invalid course ID format" });
     }
 
     try {
         // 1. Ищем курс
-        const course = await db.collection('courses')
-            .findOne({ _id: new ObjectId(req.params.id) });
-
+        const course = await db.collection('courses').findOne({ _id: new ObjectId(courseId) });
         if (!course) {
             return res.status(404).json({ error: "Course not found" });
         }
 
-        // 2. Ищем уроки (RELATIONS!)
+        // 2. Ищем уроки
         const lessons = await db.collection('lessons')
-            .find({ courseId: new ObjectId(req.params.id) })
+            .find({ courseId: new ObjectId(courseId) })
             .sort({ order: 1 })
             .toArray();
 
-        // 3. Ищем прогресс (LOGIC!)
+        // 3. Ищем прогресс пользователя
         let userProgress = { isEnrolled: false, percent: 0, completedLessonIds: [] };
 
         if (req.session.user) {
+            // FIX: Ищем по userId (строка из сессии) и courseId (ObjectId)
             const enrollment = await db.collection('enrollments').findOne({
                 userId: req.session.user.userId,
-                courseId: new ObjectId(req.params.id)
+                courseId: new ObjectId(courseId)
             });
 
             if (enrollment) {
@@ -136,12 +137,26 @@ router.get('/:id', async (req, res) => {
                 userProgress.percent = enrollment.progress || 0;
                 userProgress.completedLessonIds = enrollment.completedLessons || [];
             }
+
+            // Если это создатель курса (профессор), даем ему доступ
+            if (course.createdBy === req.session.user.userId) {
+                userProgress.isEnrolled = true;
+            }
         }
+
+        // 4. Добавляем данные для Квиза (Хардкод для примера, можно вынести в БД)
+        const quiz = {
+            questions: [
+                { id: 1, text: "What represents the structure of a webpage?", options: ["HTML", "CSS", "JS"], correct: 0 },
+                { id: 2, text: "Which tag is used for links?", options: ["<link>", "<a>", "<href>"], correct: 1 }
+            ]
+        };
 
         res.status(200).json({
             ...course,
             lessons,
-            userProgress
+            userProgress,
+            quiz
         });
 
     } catch (err) {
@@ -150,10 +165,37 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// --- MARK LESSON COMPLETE (НОВОЕ: Логика прогресса) ---
+// --- 3. SUBMIT QUIZ (Новое: проверка ответов) ---
+router.post('/:id/quiz', requireAuth, async (req, res) => {
+    // В реальном проекте ответы нужно брать из БД по ID курса
+    const { answers } = req.body; // Приходит объект вида { 1: 0, 2: 1 } (id вопроса : индекс ответа)
+
+    // Правильные ответы (Пока хардкод)
+    const correctAnswers = { 1: 0, 2: 1 };
+
+    let total = Object.keys(correctAnswers).length;
+    let correct = 0;
+
+    for (let qId in answers) {
+        if (answers[qId] == correctAnswers[qId]) {
+            correct++;
+        }
+    }
+
+    const score = total > 0 ? Math.round((correct / total) * 100) : 0;
+    const passed = score >= 70;
+
+    // Тут можно сохранить результат в БД, если нужно
+
+    res.json({ score, passed });
+});
+
+// --- 4. MARK LESSON COMPLETE (Логика прогресса) ---
 router.post('/:courseId/complete/:lessonId', requireAuth, async (req, res) => {
     const db = getDb();
     const { courseId, lessonId } = req.params;
+
+    if (!ObjectId.isValid(courseId)) return res.status(400).json({ error: "Invalid ID" });
 
     try {
         const enrollment = await db.collection('enrollments').findOne({
@@ -172,14 +214,13 @@ router.post('/:courseId/complete/:lessonId', requireAuth, async (req, res) => {
         // Пересчитываем %
         const totalLessons = await db.collection('lessons').countDocuments({ courseId: new ObjectId(courseId) });
 
-        // Получаем обновленную запись
+        // Получаем обновленную запись для точного подсчета
         const updatedEnrollment = await db.collection('enrollments').findOne({ _id: enrollment._id });
         const completedCount = updatedEnrollment.completedLessons ? updatedEnrollment.completedLessons.length : 0;
 
-        // Считаем
         const newProgress = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
 
-        // Сохраняем
+        // Сохраняем проценты
         await db.collection('enrollments').updateOne(
             { _id: enrollment._id },
             { $set: { progress: newProgress } }
@@ -192,7 +233,50 @@ router.post('/:courseId/complete/:lessonId', requireAuth, async (req, res) => {
     }
 });
 
-// --- CREATE COURSE (Professor Only) ---
+// --- 5. ENROLL (Исправлено: ObjectId validation) ---
+router.post('/:id/enroll', requireAuth, requireRole(['student']), async (req, res) => {
+    const db = getDb();
+    const courseId = req.params.id;
+
+    // Валидация
+    if (!ObjectId.isValid(courseId)) {
+        return res.status(400).json({ error: "Not a valid ID" });
+    }
+
+    try {
+        const existing = await db.collection('enrollments').findOne({
+            userId: req.session.user.userId,
+            courseId: new ObjectId(courseId)
+        });
+
+        if (existing) {
+            return res.status(400).json({ error: "Already enrolled in this course" });
+        }
+
+        const enrollmentData = {
+            userId: req.session.user.userId, // Храним как строку (из сессии)
+            courseId: new ObjectId(courseId), // Храним как ObjectId (для связей)
+            enrolledAt: new Date(),
+            progress: 0,
+            completedLessons: []
+        };
+
+        await db.collection('enrollments').insertOne(enrollmentData);
+
+        // Увеличиваем счетчик студентов
+        await db.collection('courses').updateOne(
+            { _id: new ObjectId(courseId) },
+            { $inc: { enrolledCount: 1 } }
+        );
+
+        res.status(200).json({ message: "Successfully enrolled in course" });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Could not enroll in course" });
+    }
+});
+
+// --- 6. CREATE COURSE (Professor Only) ---
 router.post('/', requireAuth, requireRole(['professor']), upload.single('image'), async (req, res) => {
     const db = getDb();
 
@@ -235,7 +319,7 @@ router.post('/', requireAuth, requireRole(['professor']), upload.single('image')
     }
 });
 
-// --- UPDATE COURSE (Professor Only) ---
+// --- 7. UPDATE COURSE (Professor Only) ---
 router.put('/:id', requireAuth, requireRole(['professor']), upload.single('image'), async (req, res) => {
     const db = getDb();
 
@@ -274,7 +358,7 @@ router.put('/:id', requireAuth, requireRole(['professor']), upload.single('image
     }
 });
 
-// --- DELETE COURSE (Professor Only) ---
+// --- 8. DELETE COURSE (Professor Only) ---
 router.delete('/:id', requireAuth, requireRole(['professor']), async (req, res) => {
     const db = getDb();
 
@@ -300,7 +384,7 @@ router.delete('/:id', requireAuth, requireRole(['professor']), async (req, res) 
             return res.status(404).json({ error: "Course not found" });
         }
 
-        // Удаляем уроки и записи
+        // Удаляем связанные данные (уроки, записи студентов)
         await db.collection('enrollments').deleteMany({ courseId: new ObjectId(req.params.id) });
         await db.collection('lessons').deleteMany({ courseId: new ObjectId(req.params.id) });
 
@@ -308,46 +392,6 @@ router.delete('/:id', requireAuth, requireRole(['professor']), async (req, res) 
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: "Could not delete course" });
-    }
-});
-
-// --- ENROLL (Student Only) (ОБНОВЛЕНО: инициализация completedLessons) ---
-router.post('/:id/enroll', requireAuth, requireRole(['student']), async (req, res) => {
-    const db = getDb();
-
-    if (!ObjectId.isValid(req.params.id)) {
-        return res.status(400).json({ error: "Not a valid ID" });
-    }
-
-    try {
-        const enrollment = await db.collection('enrollments').findOne({
-            userId: req.session.user.userId,
-            courseId: new ObjectId(req.params.id)
-        });
-
-        if (enrollment) {
-            return res.status(400).json({ error: "Already enrolled in this course" });
-        }
-
-        const enrollmentData = {
-            userId: req.session.user.userId,
-            courseId: new ObjectId(req.params.id),
-            enrolledAt: new Date(),
-            progress: 0,
-            completedLessons: [] // <-- ВАЖНО для логики прогресса
-        };
-
-        await db.collection('enrollments').insertOne(enrollmentData);
-
-        await db.collection('courses').updateOne(
-            { _id: new ObjectId(req.params.id) },
-            { $inc: { enrolledCount: 1 } }
-        );
-
-        res.status(200).json({ message: "Successfully enrolled in course" });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: "Could not enroll in course" });
     }
 });
 

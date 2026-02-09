@@ -31,10 +31,7 @@
             margin-bottom: -2px;
         }
         .auth-form {
-            display: none;
-        }
-        .auth-form.active {
-            display: block;
+            display: block; /* Исправлено для гарантии отображения */
         }
     </style>
 </head>
@@ -47,12 +44,12 @@
                 <a href="/register" class="auth-tab">Register</a>
             </div>
 
-            <form id="loginForm" class="auth-form active">
+            <form id="loginForm" class="auth-form">
                 <div class="form-group">
                     <label for="loginEmail">Email</label>
                     <div class="input-wrapper">
                         <i class="fas fa-envelope"></i>
-                        <input type="email" id="loginEmail" name="email" required>
+                        <input type="email" id="loginEmail" name="email" required placeholder="name@example.com">
                     </div>
                 </div>
 
@@ -60,57 +57,71 @@
                     <label for="loginPassword">Password</label>
                     <div class="input-wrapper">
                         <i class="fas fa-lock"></i>
-                        <input type="password" id="loginPassword" name="password" required>
+                        <input type="password" id="loginPassword" name="password" required placeholder="********">
                     </div>
                 </div>
 
-                <button type="submit" class="btn glow-btn" style="width: 100%; margin-top: 1rem;">
+                <button type="submit" class="btn glow-btn" id="loginBtn" style="width: 100%; margin-top: 1rem;">
                     <i class="fas fa-sign-in-alt"></i> Login
                 </button>
 
-                <div id="loginMessage" style="margin-top: 1rem; text-align: center;"></div>
+                <div id="loginMessage" style="margin-top: 1rem; text-align: center; min-height: 20px;"></div>
             </form>
         </div>
     </main>
 
-
-
     <script>
-       // В login.html обновляем обработчик формы:
-document.getElementById('loginForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
 
-    const formData = {
-        email: document.getElementById('loginEmail').value,
-        password: document.getElementById('loginPassword').value
-    };
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const msgBox = document.getElementById('loginMessage');
+            const btn = document.getElementById('loginBtn');
 
-    try {
-        const response = await fetch('/api/auth/login', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(formData)
-        });
+            // Визуальная индикация загрузки
+            const originalBtnText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+            btn.disabled = true;
+            msgBox.textContent = '';
 
-        const data = await response.json();
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
 
-        if (response.ok) {
-            if (data.requiresRole) {
-                window.location.href = '/choose-role';
-            } else {
-                window.location.href = '/profile';
+                const data = await response.json();
+
+                if (response.ok) {
+                    msgBox.textContent = 'Success! Redirecting...';
+                    msgBox.style.color = '#00ff88';
+
+                    // --- ГЛАВНАЯ ЛОГИКА ---
+                    // Сервер возвращает requiresRole: true, если роль еще не выбрана
+                    if (data.requiresRole) {
+                        window.location.href = '/choose-role';
+                    } else {
+                        // Если роль есть, идем в профиль
+                        window.location.href = '/profile';
+                    }
+                } else {
+                    msgBox.textContent = data.error || 'Invalid credentials';
+                    msgBox.style.color = '#ff6b6b';
+                    btn.innerHTML = originalBtnText;
+                    btn.disabled = false;
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                msgBox.textContent = 'Network error. Check console.';
+                msgBox.style.color = '#ff6b6b';
+                btn.innerHTML = originalBtnText;
+                btn.disabled = false;
             }
-        } else {
-            document.getElementById('loginMessage').textContent = data.error;
-            document.getElementById('loginMessage').style.color = '#ff6b6b';
-        }
-    } catch (error) {
-        document.getElementById('loginMessage').textContent = 'An error occurred';
-        document.getElementById('loginMessage').style.color = '#ff6b6b';
-    }
-});
+        });
     </script>
 </body>
 </html>

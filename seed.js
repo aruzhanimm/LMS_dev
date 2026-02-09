@@ -109,7 +109,7 @@ const initialCourses = [
         createdBy: null,
         createdByName: "System"
     }
-];
+];s
 
 async function seedDatabase() {
     const client = new MongoClient(uri);

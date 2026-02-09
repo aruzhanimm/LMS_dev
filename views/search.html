@@ -265,7 +265,7 @@
 
             if (data.courses && data.courses.length > 0) {
                 grid.innerHTML = data.courses.map(course => `
-                    <div class="course-card glass-card hover-scale">
+                    <disv class="course-card glass-card hover-scale">
                         <div class="card-img-top">
                             ${course.image ? `<img src="${course.image}" alt="${course.title}" style="height: 160px; object-fit: cover;">` :
                             '<div style="height: 160px; background: var(--medium-gray); display: flex; align-items: center; justify-content: center;">' +
@@ -292,7 +292,7 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </disv>
                 `).join('');
 
                 countElement.textContent = data.totalCourses || data.courses.length;

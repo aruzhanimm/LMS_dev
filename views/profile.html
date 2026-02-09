@@ -15,21 +15,36 @@
         }
         .profile-info {
             display: flex;
-            align-items: center;
-            gap: 1rem;
+            align-items: flex-start; /* Изменил на start для лучшего вида с био */
+            gap: 1.5rem;
             margin-bottom: 2rem;
+            padding: 2rem;
         }
-        .profile-avatar {
-            width: 80px;
-            height: 80px;
+        /* Стили для аватарки-буквы */
+        .profile-avatar-placeholder {
+            width: 100px;
+            height: 100px;
             background: var(--primary-purple);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 2rem;
+            font-size: 3rem;
             font-weight: bold;
+            color: white;
+            flex-shrink: 0;
         }
+        /* Стили для аватарки-картинки */
+        .profile-avatar-img {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--primary-purple);
+            display: none; /* Скрыто по умолчанию */
+            flex-shrink: 0;
+        }
+
         .profile-tabs {
             display: flex;
             gap: 1rem;
@@ -59,6 +74,35 @@
             grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
             gap: 1.5rem;
         }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+        .modal-content {
+            max-width: 500px;
+            margin: 5% auto;
+            padding: 2rem;
+            position: relative;
+        }
+        .close-modal {
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            cursor: pointer;
+            font-size: 1.5rem;
+            color: var(--light-gray);
+            transition: 0.3s;
+        }
+        .close-modal:hover { color: white; }
     </style>
 </head>
 <body>
@@ -78,19 +122,29 @@
         </div>
 
         <div class="profile-info glass-card">
-            <div class="profile-avatar" id="userAvatar">U</div>
-            <div>
-                <h2 id="userName">Loading...</h2>
-                <p id="userEmail">Loading...</p>
+            <div class="profile-avatar-placeholder" id="userAvatarPlaceholder">U</div>
+            <img src="" alt="Avatar" class="profile-avatar-img" id="userAvatarImg">
+
+            <div style="flex-grow: 1;">
+                <div style="display: flex; justify-content: space-between; align-items: start;">
+                    <div>
+                        <h2 id="userName" style="margin-bottom: 5px;">Loading...</h2>
+                        <p id="userEmail" style="color: var(--light-gray);">Loading...</p>
+                    </div>
+                    <button onclick="openEditModal()" class="btn-sm btn-secondary">
+                        <i class="fas fa-pen"></i> Edit
+                    </button>
+                </div>
+
+                <div id="userBioDisplay" style="margin-top: 15px; font-style: italic; color: #ccc; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
+                    </div>
             </div>
         </div>
 
         <div class="profile-tabs">
             <div class="profile-tab active" data-tab="enrolled">My Learning</div>
-
             <div class="profile-tab professor-only" data-tab="created" style="display: none;">My Courses</div>
             <div class="profile-tab professor-only" data-tab="students" style="display: none;">Students</div>
-
             <div class="profile-tab" data-tab="settings">Settings</div>
         </div>
 
@@ -114,13 +168,36 @@
 
         <div id="settingsContent" class="profile-content">
             <h3>Account Settings</h3>
-            <p>Role management and password settings coming soon.</p>
+            <p>Password settings coming soon.</p>
         </div>
     </main>
 
+    <div id="editProfileModal" class="modal">
+        <div class="glass-card modal-content">
+            <span onclick="document.getElementById('editProfileModal').style.display='none'" class="close-modal">&times;</span>
+            <h2 style="margin-bottom: 1.5rem;">Edit Profile</h2>
+            <form id="editProfileForm">
+                <div class="form-group">
+                    <label>Avatar Image</label>
+                    <input type="file" name="avatar" accept="image/*" class="form-control" style="padding: 10px;">
+                </div>
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" name="username" id="editUsername" required class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Bio</label>
+                    <textarea name="bio" id="editBio" class="form-control" rows="4" placeholder="Tell us about yourself"></textarea>
+                </div>
+                <button type="submit" class="btn glow-btn" style="width: 100%;">Save Changes</button>
+            </form>
+        </div>
+    </div>
+
     <script>
-        // Глобальная переменная для роли пользователя
         let currentUserRole = 'student';
+        let currentUserEmail = ''; // Сохраним email для формы
+        let currentBio = '';
 
         // Load user data
         async function loadUserData() {
@@ -136,30 +213,45 @@
 
                 if (user) {
                     currentUserRole = user.role || 'student';
+                    currentUserEmail = user.email;
+                    currentBio = user.bio || '';
 
+                    // 1. Заполняем текстовые данные
                     document.getElementById('userName').textContent = user.username;
 
-                    // Красивый бейдж роли
                     const roleLabel = currentUserRole === 'professor'
                         ? ' <span style="background:var(--primary-purple); font-size:0.7em; padding:2px 6px; border-radius:4px;">Professor</span>'
                         : ' <span style="background:gray; font-size:0.7em; padding:2px 6px; border-radius:4px;">Student</span>';
 
                     document.getElementById('userEmail').innerHTML = user.email + roleLabel;
-                    document.getElementById('userAvatar').textContent = user.username.charAt(0).toUpperCase();
 
-                    // --- САМОЕ ГЛАВНОЕ: ЛОГИКА ОТОБРАЖЕНИЯ ---
+                    if (user.bio) {
+                        document.getElementById('userBioDisplay').textContent = user.bio;
+                    } else {
+                        document.getElementById('userBioDisplay').textContent = "No bio provided yet.";
+                    }
+
+                    // 2. Логика Аватарки
+                    const placeholder = document.getElementById('userAvatarPlaceholder');
+                    const img = document.getElementById('userAvatarImg');
+
+                    if (user.avatar) {
+                        img.src = user.avatar;
+                        img.style.display = 'block';
+                        placeholder.style.display = 'none';
+                    } else {
+                        placeholder.textContent = user.username.charAt(0).toUpperCase();
+                        placeholder.style.display = 'flex';
+                        img.style.display = 'none';
+                    }
+
+                    // 3. UI для профессора
                     if (currentUserRole === 'professor') {
-                        // 1. Показываем кнопку Add Course в хедере
                         const btn = document.getElementById('professorActionBtn');
                         if (btn) btn.style.display = 'inline-flex';
-
-                        // 2. Показываем табы профессора
                         document.querySelectorAll('.professor-only').forEach(el => {
                             el.style.display = 'block';
                         });
-
-                        // Опционально: Сразу переключаем на "My Courses" для удобства
-                        // document.querySelector('[data-tab="created"]').click();
                     }
                 }
             } catch (error) {
@@ -167,30 +259,69 @@
             }
         }
 
+        // --- ФУНКЦИИ МОДАЛЬНОГО ОКНА ---
+        function openEditModal() {
+            // Предзаполняем поля текущими значениями
+            document.getElementById('editUsername').value = document.getElementById('userName').textContent;
+            document.getElementById('editBio').value = currentBio;
+
+            document.getElementById('editProfileModal').style.display = 'block';
+        }
+
+        // Закрытие по клику вне окна
+        window.onclick = function(event) {
+            const modal = document.getElementById('editProfileModal');
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        }
+
+        // Отправка формы редактирования
+        document.getElementById('editProfileForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+
+            // Добавляем email (серверу он нужен для идентификации или обновления)
+            formData.append('email', currentUserEmail);
+
+            try {
+                const res = await fetch('/api/auth/update-profile', {
+                    method: 'POST',
+                    body: formData // Content-Type ставится автоматически
+                });
+
+                if (res.ok) {
+                    window.location.reload();
+                } else {
+                    alert('Failed to update profile');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Error updating profile');
+            }
+        });
+
+
         // --- ЛОГИКА ТАБОВ ---
-        // Вешаем обработчик на родителя (делегирование событий), чтобы работало надежно
         document.querySelector('.profile-tabs').addEventListener('click', (e) => {
             if (e.target.classList.contains('profile-tab')) {
                 const tab = e.target;
                 const tabId = tab.dataset.tab;
 
-                // Убираем активные классы
                 document.querySelectorAll('.profile-tab').forEach(t => t.classList.remove('active'));
                 document.querySelectorAll('.profile-content').forEach(c => c.classList.remove('active'));
 
-                // Добавляем активный класс
                 tab.classList.add('active');
                 const content = document.getElementById(tabId + 'Content');
                 if (content) content.classList.add('active');
 
-                // Грузим данные
                 if (tabId === 'enrolled') loadEnrolledCourses();
                 else if (tabId === 'created') loadCreatedCourses();
                 else if (tabId === 'students') loadStudents();
             }
         });
 
-        // Load enrolled courses
+        // Load courses logic...
         async function loadEnrolledCourses() {
             try {
                 const response = await fetch('/api/auth/my-courses');
@@ -225,12 +356,9 @@
                 } else {
                     container.innerHTML = '<p>You have not enrolled in any courses yet.</p>';
                 }
-            } catch (error) {
-                console.error('Error:', error);
-            }
+            } catch (error) { console.error('Error:', error); }
         }
 
-        // Load created courses (Только для профессора)
         async function loadCreatedCourses() {
             try {
                 const response = await fetch('/api/auth/created-courses');
@@ -258,27 +386,17 @@
                 } else {
                     container.innerHTML = '<p>No courses created yet.</p>';
                 }
-            } catch (error) {
-                console.error('Error:', error);
-            }
+            } catch (error) { console.error('Error:', error); }
         }
 
-        // Load Students (Только для профессора)
-        // Load Students (Только для профессора)
         async function loadStudents() {
             try {
                 const response = await fetch('/api/auth/my-students');
-
-                if (response.status === 403 || response.status === 401) {
-                    // Если вдруг студент пытается загрузить список
-                    return;
-                }
-
+                if (response.status === 403 || response.status === 401) return;
                 const data = await response.json();
                 const container = document.getElementById('studentsList');
 
                 if (data.students && data.students.length > 0) {
-                    // Генерируем таблицу
                     container.innerHTML = `
                         <div style="overflow-x: auto; margin-top: 1rem;">
                             <table style="width: 100%; border-collapse: collapse; min-width: 500px;">
@@ -319,43 +437,27 @@
                             </table>
                         </div>`;
                 } else {
-                    container.innerHTML = `
-                        <div style="text-align: center; padding: 3rem; color: #aaa;">
-                            <i class="fas fa-users-slash" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
-                            <p>No students have enrolled in your courses yet.</p>
-                        </div>`;
+                    container.innerHTML = `<div style="text-align: center; padding: 3rem; color: #aaa;"><p>No students have enrolled yet.</p></div>`;
                 }
-            } catch (error) {
-                console.error('Error loading students:', error);
-                document.getElementById('studentsList').innerHTML = '<p style="color: #ff6b6b;">Error loading student list.</p>';
-            }
+            } catch (error) { console.error('Error loading students:', error); }
         }
 
-        // Функция удаления
         async function deleteCourse(courseId) {
             if (!confirm('Delete this course?')) return;
             try {
                 const response = await fetch(`/api/courses/${courseId}`, { method: 'DELETE' });
-                if (response.ok) {
-                    loadCreatedCourses();
-                } else {
-                    alert('Failed to delete');
-                }
+                if (response.ok) loadCreatedCourses();
+                else alert('Failed to delete');
             } catch (e) { console.error(e); }
         }
 
-        // Переход на редактирование
-        window.editCourse = function(courseId) {
-            window.location.href = `/add-course?edit=${courseId}`;
-        };
+        window.editCourse = function(courseId) { window.location.href = `/add-course?edit=${courseId}`; };
 
-        // Logout
         document.getElementById('logoutBtn').addEventListener('click', async () => {
             await fetch('/api/auth/logout', { method: 'POST' });
             window.location.href = '/login';
         });
 
-        // Запуск при загрузке
         loadUserData();
         loadEnrolledCourses();
     </script>

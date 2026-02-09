@@ -7,26 +7,31 @@
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* Стили для режима обучения (Classroom Mode) */
+        /* Стили для режима обучения */
         .classroom-grid {
             display: grid;
             grid-template-columns: 2fr 1fr;
             gap: 2rem;
             margin-top: 2rem;
         }
+
+        /* ФИКС ПРОБЛЕМЫ С ВИДЕО: Черный фон + z-index */
         .video-player {
             position: relative;
             padding-bottom: 56.25%; /* 16:9 */
             height: 0;
-            background: #000;
+            background: #000; /* ЧЕРНЫЙ ФОН */
             border-radius: 10px;
             overflow: hidden;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            z-index: 10;
         }
         .video-player iframe {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
+            border: none;
         }
+
         .lesson-list {
             background: var(--glass-bg);
             border: var(--glass-border);
@@ -48,10 +53,21 @@
         .lesson-item.active { background: rgba(138, 43, 226, 0.2); border-left: 4px solid var(--primary-purple); }
         .lesson-item.completed i { color: #00ff88; }
 
-        /* Скрываем ненужные блоки по умолчанию */
-        #preview-mode { display: none; }
-        #classroom-mode { display: none; }
+        /* Табы */
+        .tab-btn {
+            background: transparent;
+            border: 1px solid var(--primary-purple);
+            color: white;
+            padding: 8px 16px;
+            cursor: pointer;
+            border-radius: 5px;
+            margin-right: 10px;
+            transition: 0.3s;
+        }
+        .tab-btn:hover { background: rgba(138, 43, 226, 0.2); }
+        .tab-btn.active { background: var(--primary-purple); }
 
+        #preview-mode, #classroom-mode { display: none; }
         @media (max-width: 768px) { .classroom-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
@@ -60,13 +76,11 @@
     <main class="container">
         <div class="item-header">
             <h1 id="course-title">Loading...</h1>
-
             <div class="item-meta" id="course-meta">
                 <span id="meta-rating"><i class="fas fa-star" style="color: gold;"></i> 0.0</span> |
-                <span id="meta-duration"><i class="fas fa-clock"></i> 0h</span> |
+                <span id="meta-duration"><i class="fas fa-clock"></i> N/A</span> |
                 <span id="meta-students"><i class="fas fa-users"></i> 0</span>
             </div>
-
             <div id="progress-container" style="display:none; margin-top:15px; max-width: 600px;">
                 <div style="display:flex; justify-content:space-between; margin-bottom:5px; font-size:0.9rem;">
                     <span>Course Progress</span>
@@ -80,36 +94,16 @@
 
         <div id="preview-mode">
             <div style="margin: 2rem 0;">
-                <img id="course-image" src="/images/placeholder.jpg" alt="Course Image" style="width: 100%; height: 350px; object-fit: cover; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.3);">
+                <img id="course-image" src="/images/placeholder.jpg" style="width: 100%; height: 350px; object-fit: cover; border-radius: 10px;">
             </div>
-
             <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem;">
                 <div>
                     <h2>About This Course</h2>
-                    <p id="course-description" style="white-space: pre-wrap; line-height: 1.6; color: var(--light-gray);">
-                        Loading description...
-                    </p>
+                    <p id="course-description" style="color: var(--light-gray);">Loading...</p>
                 </div>
-
-                <div class="glass-card" style="padding: 1.5rem; height: fit-content;">
-                    <h3 style="margin-top:0;">Instructor</h3>
-                    <div style="display: flex; align-items: center; gap: 1rem; margin-top: 1rem; margin-bottom: 2rem;">
-                        <div style="width: 50px; height: 50px; background: var(--primary-purple); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: white;">
-                            <i class="fas fa-chalkboard-teacher"></i>
-                        </div>
-                        <div>
-                            <h4 id="instructor-name" style="margin:0;">Name</h4>
-                            <p id="instructor-category" style="color: gray; margin:0; font-size:0.9rem;">Instructor</p>
-                        </div>
-                    </div>
-
-                    <div style="text-align: center;">
-                        <h2 id="course-price" style="margin-bottom: 1rem;">$0.00</h2>
-                        <button id="enroll-btn" class="btn glow-btn" style="width: 100%; margin-bottom: 1rem;">
-                            Enroll Now
-                        </button>
-                        <p style="font-size: 0.8rem; color: gray;">30-Day Money-Back Guarantee</p>
-                    </div>
+                <div class="glass-card" style="padding: 1.5rem; text-align: center;">
+                    <h2 id="course-price" style="margin-bottom: 1rem;">$0.00</h2>
+                    <button id="enroll-btn" class="btn glow-btn" style="width: 100%;">Enroll Now</button>
                 </div>
             </div>
         </div>
@@ -117,222 +111,203 @@
         <div id="classroom-mode">
             <div class="classroom-grid">
                 <div>
-                    <div class="video-player">
-                        <iframe id="main-video" src="" frameborder="0" allowfullscreen></iframe>
+                    <div style="margin-bottom: 1rem;">
+                        <button onclick="switchTab('video')" id="tab-video" class="tab-btn active">Lessons</button>
+                        <button onclick="switchTab('quiz')" id="tab-quiz" class="tab-btn">Quiz</button>
                     </div>
 
-                    <div style="margin-top: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-                        <h2 id="current-lesson-title" style="margin:0;">Select a lesson to start</h2>
-
-                        <button id="mark-complete-btn" class="btn" style="display:none; background: #2ecc71;" onclick="markComplete()">
-                            <i class="fas fa-check"></i> Mark as Completed
-                        </button>
+                    <div id="video-container">
+                        <div class="video-player">
+                            <iframe id="main-video" src="" allowfullscreen></iframe>
+                        </div>
+                        <div style="margin-top: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+                            <h2 id="current-lesson-title" style="margin:0;">Select a lesson</h2>
+                            <button id="mark-complete-btn" class="btn" style="display:none; background: #2ecc71;" onclick="markComplete()">
+                                <i class="fas fa-check"></i> Mark as Completed
+                            </button>
+                        </div>
                     </div>
 
-                    <div style="margin-top: 2rem; padding: 1.5rem; background: rgba(255,255,255,0.03); border-radius: 10px; border: 1px solid rgba(255,255,255,0.05);">
-                        <h3 style="margin-top:0;">Lesson Notes</h3>
-                        <p style="color: var(--light-gray);">Watch the video carefully and complete the assignment if provided.</p>
+                    <div id="quiz-container" style="display:none;" class="glass-card">
+                        <h3>Knowledge Check</h3>
+                        <form id="quiz-form"><div id="quiz-questions"></div><button class="btn glow-btn" style="margin-top:1rem;">Submit</button></form>
                     </div>
                 </div>
 
                 <div>
-                    <h3 style="margin-top:0; margin-bottom:1rem;">Course Content</h3>
-                    <div class="lesson-list" id="lesson-list-container">
-                        </div>
+                    <h3>Content</h3>
+                    <div class="lesson-list" id="lesson-list-container"></div>
                 </div>
             </div>
         </div>
-
     </main>
 
     <script>
     let currentCourseId = null;
     let currentLessonId = null;
-    let isEnrolled = false;
 
     async function loadCourse() {
-        // Получаем ID из URL
         const pathParts = window.location.pathname.split('/');
         currentCourseId = pathParts[pathParts.length - 1];
 
         try {
-            const response = await fetch(`/api/courses/${currentCourseId}`);
+            const res = await fetch(`/api/courses/${currentCourseId}`);
+            if (!res.ok) return document.querySelector('.container').innerHTML = '<h2>Not Found</h2>';
+            const course = await res.json();
 
-            if (!response.ok) {
-                document.querySelector('.container').innerHTML = '<h2>Course not found</h2>';
-                return;
-            }
-
-            const course = await response.json();
-
-            // === ЗАПОЛНЯЕМ ОБЩИЕ ДАННЫЕ ===
+            // Populate Info
             document.getElementById('course-title').textContent = course.title;
+            document.getElementById('course-description').textContent = course.description;
+            document.getElementById('course-price').textContent = course.price > 0 ? `$${course.price}` : 'Free';
+            document.getElementById('course-image').src = course.image || '/images/placeholder.jpg';
 
-            // Мета
-            document.getElementById('meta-rating').innerHTML = `<i class="fas fa-star" style="color: gold;"></i> ${course.rating || 4.8}`;
-            document.getElementById('meta-duration').innerHTML = `<i class="fas fa-clock"></i> ${course.duration || 'N/A'}`;
+            // Meta
+            document.getElementById('meta-rating').innerHTML = `<i class="fas fa-star" style="color:gold"></i> ${course.rating || 4.8}`;
             document.getElementById('meta-students').innerHTML = `<i class="fas fa-users"></i> ${course.enrolledCount || 0}`;
 
-            // Проверяем, записан ли студент
-            // (Сервер теперь возвращает userProgress, если мы обновили routes/courses.js)
-            isEnrolled = course.userProgress && course.userProgress.isEnrolled;
-
-            // Также если это создатель курса (профессор), даем ему доступ как "записанному"
-            // (Это можно проверить через отдельный запрос /me, но пока доверимся userProgress)
+            const isEnrolled = course.userProgress && course.userProgress.isEnrolled;
 
             if (isEnrolled) {
-                // === РЕЖИМ ОБУЧЕНИЯ ===
+                // Show Classroom
                 document.getElementById('preview-mode').style.display = 'none';
                 document.getElementById('classroom-mode').style.display = 'block';
-                document.getElementById('course-meta').style.display = 'none'; // Скрываем мету, чтобы не мешала
+                document.getElementById('course-meta').style.display = 'none';
                 document.getElementById('progress-container').style.display = 'block';
 
                 updateProgressBar(course.userProgress.percent);
                 renderLessonList(course.lessons, course.userProgress.completedLessonIds);
-
+                renderQuiz(course.quiz);
             } else {
-                // === РЕЖИМ ПРЕВЬЮ ===
+                // Show Preview
                 document.getElementById('preview-mode').style.display = 'block';
-                document.getElementById('classroom-mode').style.display = 'none';
-
-                // Заполняем данные для превью
-                document.getElementById('course-image').src = course.image || '/images/placeholder.jpg';
-                document.getElementById('course-description').textContent = course.description;
-                document.getElementById('instructor-name').textContent = course.instructor;
-                document.getElementById('instructor-category').textContent = course.category;
-
-                const priceText = course.price > 0 ? `$${course.price}` : 'Free';
-                document.getElementById('course-price').textContent = priceText;
-
-                // Логика кнопки Enroll
-                const enrollBtn = document.getElementById('enroll-btn');
-                enrollBtn.onclick = () => enrollInCourse(currentCourseId);
+                document.getElementById('enroll-btn').onclick = () => enrollInCourse(currentCourseId);
             }
-
-        } catch (error) {
-            console.error('Error loading course:', error);
-        }
+        } catch (e) { console.error(e); }
     }
 
-    // Рендер списка уроков (Для режима обучения)
     function renderLessonList(lessons, completedIds) {
-        const listContainer = document.getElementById('lesson-list-container');
-        listContainer.innerHTML = '';
+        const list = document.getElementById('lesson-list-container');
+        list.innerHTML = '';
 
         if (lessons && lessons.length > 0) {
-            // Автоматически запускаем первый урок, если никакой не выбран
-            if (!currentLessonId) {
-                playVideo(lessons[0].youtubeId, lessons[0].title, lessons[0]._id);
-            }
+            // Auto-play first lesson
+            if (!currentLessonId) playVideo(lessons[0].youtubeId, lessons[0].title, lessons[0]._id);
 
-            lessons.forEach(lesson => {
-                const isCompleted = completedIds.includes(lesson._id);
-
-                const item = document.createElement('div');
-                item.className = `lesson-item ${isCompleted ? 'completed' : ''}`;
-                // Добавляем ID чтобы подсвечивать активный
-                item.id = `lesson-${lesson._id}`;
-
-                item.onclick = () => {
-                    playVideo(lesson.youtubeId, lesson.title, lesson._id);
-                };
-
-                item.innerHTML = `
-                    <div style="display:flex; flex-direction:column;">
-                        <span style="font-weight:500;">${lesson.title}</span>
-                        <span style="font-size:0.8rem; color:gray;">${lesson.duration}</span>
-                    </div>
-                    <i class="fas ${isCompleted ? 'fa-check-circle' : 'fa-play-circle'}"></i>
+            lessons.forEach(l => {
+                const isDone = completedIds.includes(l._id);
+                const div = document.createElement('div');
+                div.className = `lesson-item ${isDone ? 'completed' : ''}`;
+                div.id = `lesson-${l._id}`;
+                div.innerHTML = `
+                    <div>${l.title} <br><small style="color:gray">${l.duration}</small></div>
+                    <i class="fas ${isDone ? 'fa-check-circle' : 'fa-play-circle'}"></i>
                 `;
-                listContainer.appendChild(item);
+                div.onclick = () => {
+                    switchTab('video');
+                    playVideo(l.youtubeId, l.title, l._id);
+                };
+                list.appendChild(div);
             });
         } else {
-            listContainer.innerHTML = '<div style="padding:20px; text-align:center;">No lessons available yet.</div>';
+            list.innerHTML = '<div style="padding:20px;">No lessons available yet.</div>';
         }
     }
 
-    // Функция воспроизведения видео
-    function playVideo(youtubeId, title, lessonId) {
-        currentLessonId = lessonId;
+    function playVideo(yId, title, lId) {
+        currentLessonId = lId;
+        // Защита от пустых ID
+        if (yId) {
+            document.getElementById('main-video').src = `https://www.youtube.com/embed/${yId}?autoplay=1`;
+        } else {
+            console.warn("No video ID");
+        }
 
-        // Обновляем плеер
-        document.getElementById('main-video').src = `https://www.youtube.com/embed/${youtubeId}?autoplay=1`;
         document.getElementById('current-lesson-title').textContent = title;
-
-        // Показываем кнопку завершения
         document.getElementById('mark-complete-btn').style.display = 'inline-block';
 
-        // Подсветка активного урока в списке
         document.querySelectorAll('.lesson-item').forEach(el => el.classList.remove('active'));
-        const activeItem = document.getElementById(`lesson-${lessonId}`);
-        if(activeItem) activeItem.classList.add('active');
+        const active = document.getElementById(`lesson-${lId}`);
+        if (active) active.classList.add('active');
     }
 
-    // Функция завершения урока
+    function switchTab(tab) {
+        if (tab === 'video') {
+            document.getElementById('video-container').style.display = 'block';
+            document.getElementById('quiz-container').style.display = 'none';
+            document.getElementById('tab-video').classList.add('active');
+            document.getElementById('tab-quiz').classList.remove('active');
+        } else {
+            document.getElementById('video-container').style.display = 'none';
+            document.getElementById('quiz-container').style.display = 'block';
+            document.getElementById('tab-video').classList.remove('active');
+            document.getElementById('tab-quiz').classList.add('active');
+            const frame = document.getElementById('main-video');
+            frame.src = frame.src; // Stop video
+        }
+    }
+
+    function renderQuiz(quiz) {
+        if (quiz && quiz.questions) {
+            document.getElementById('quiz-questions').innerHTML = quiz.questions.map((q, i) => `
+                <div style="margin-bottom:1rem;">
+                    <p><strong>${i+1}. ${q.text}</strong></p>
+                    ${q.options.map((opt, o) => `<label style="display:block;"><input type="radio" name="q${q.id}" value="${o}"> ${opt}</label>`).join('')}
+                </div>
+            `).join('');
+        } else {
+            document.getElementById('quiz-container').innerHTML = '<p style="padding:2rem;">No quiz available.</p>';
+        }
+    }
+
+    // Quiz Submit
+    document.getElementById('quiz-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const answers = {};
+        for (let [k, v] of formData.entries()) answers[k.replace('q', '')] = v;
+
+        try {
+            const res = await fetch(`/api/courses/${currentCourseId}/quiz`, {
+                method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({answers})
+            });
+            const r = await res.json();
+            alert(`Score: ${r.score}%`);
+        } catch(e) { console.error(e); }
+    });
+
+    // Mark Complete
     async function markComplete() {
         if (!currentLessonId) return;
-
         const btn = document.getElementById('mark-complete-btn');
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+        btn.innerHTML = 'Saving...';
 
-        try {
-            const res = await fetch(`/api/courses/${currentCourseId}/complete/${currentLessonId}`, { method: 'POST' });
-            const data = await res.json();
+        const res = await fetch(`/api/courses/${currentCourseId}/complete/${currentLessonId}`, { method: 'POST' });
+        const data = await res.json();
 
-            if (data.success) {
-                // Обновляем прогресс бар
-                updateProgressBar(data.newProgress);
-
-                // Ставим галочку в списке визуально (без перезагрузки)
-                const activeItem = document.getElementById(`lesson-${currentLessonId}`);
-                if(activeItem) {
-                    activeItem.classList.add('completed');
-                    activeItem.querySelector('i').className = 'fas fa-check-circle';
-                }
-
-                btn.innerHTML = '<i class="fas fa-check"></i> Completed!';
-                setTimeout(() => { btn.style.display = 'none'; }, 2000); // Скрываем кнопку
+        if (data.success) {
+            updateProgressBar(data.newProgress);
+            const item = document.getElementById(`lesson-${currentLessonId}`);
+            if (item) {
+                item.classList.add('completed');
+                item.querySelector('i').className = 'fas fa-check-circle';
             }
-        } catch (e) {
-            console.error(e);
-            btn.innerHTML = originalText;
-            alert('Error saving progress');
+            btn.innerHTML = 'Completed!';
+            setTimeout(() => btn.style.display = 'none', 1000);
         }
     }
 
-    function updateProgressBar(percent) {
-        document.getElementById('progress-bar').style.width = percent + '%';
-        document.getElementById('progress-text').textContent = percent + '%';
+    function updateProgressBar(p) {
+        document.getElementById('progress-bar').style.width = p + '%';
+        document.getElementById('progress-text').textContent = p + '%';
     }
 
-    // Функция записи на курс
-    async function enrollInCourse(courseId) {
-        const btn = document.getElementById('enroll-btn');
-        btn.innerHTML = 'Processing...';
-
-        try {
-            const response = await fetch(`/api/courses/${courseId}/enroll`, { method: 'POST' });
-
-            if (response.ok) {
-                // Перезагружаем страницу, чтобы переключиться в режим "Classroom"
-                window.location.reload();
-            } else {
-                if (response.status === 401) {
-                    window.location.href = '/login';
-                } else {
-                    const data = await response.json();
-                    alert(data.error || 'Failed to enroll');
-                    btn.innerHTML = 'Enroll Now';
-                }
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            btn.innerHTML = 'Enroll Now';
-        }
+    async function enrollInCourse(id) {
+        const res = await fetch(`/api/courses/${id}/enroll`, { method: 'POST' });
+        if (res.ok) window.location.reload();
+        else if (res.status === 401) window.location.href = '/login';
+        else alert('Enroll failed');
     }
 
-    // Запуск при загрузке
     loadCourse();
     </script>
 </body>

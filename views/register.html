@@ -40,7 +40,6 @@
 </head>
 <body>
 
-
     <main class="container">
         <div class="auth-container glass-card">
             <div class="auth-tabs">
@@ -90,24 +89,24 @@
         </div>
     </main>
 
-
-
     <script>
         document.getElementById('registerForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
             const password = document.getElementById('registerPassword').value;
             const confirmPassword = document.getElementById('confirmPassword').value;
+            const messageBox = document.getElementById('registerMessage');
 
+            // 1. Валидация на клиенте
             if (password !== confirmPassword) {
-                document.getElementById('registerMessage').textContent = 'Passwords do not match';
-                document.getElementById('registerMessage').style.color = '#ff6b6b';
+                messageBox.textContent = 'Passwords do not match';
+                messageBox.style.color = '#ff6b6b';
                 return;
             }
 
             if (password.length < 6) {
-                document.getElementById('registerMessage').textContent = 'Password must be at least 6 characters';
-                document.getElementById('registerMessage').style.color = '#ff6b6b';
+                messageBox.textContent = 'Password must be at least 6 characters';
+                messageBox.style.color = '#ff6b6b';
                 return;
             }
 
@@ -118,6 +117,7 @@
             };
 
             try {
+                // 2. Отправка данных
                 const response = await fetch('/api/auth/register', {
                     method: 'POST',
                     headers: {
@@ -129,14 +129,24 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    window.location.href = '/profile';
+                    // 3. Успех: проверяем, нужно ли выбирать роль
+                    messageBox.textContent = 'Success! Redirecting...';
+                    messageBox.style.color = '#00ff88';
+
+                    if (data.requiresRole) {
+                        window.location.href = '/choose-role';
+                    } else {
+                        window.location.href = '/profile';
+                    }
                 } else {
-                    document.getElementById('registerMessage').textContent = data.error;
-                    document.getElementById('registerMessage').style.color = '#ff6b6b';
+                    // 4. Ошибка с сервера
+                    messageBox.textContent = data.error || 'Registration failed';
+                    messageBox.style.color = '#ff6b6b';
                 }
             } catch (error) {
-                document.getElementById('registerMessage').textContent = 'An error occurred';
-                document.getElementById('registerMessage').style.color = '#ff6b6b';
+                console.error(error);
+                messageBox.textContent = 'Network error. Please try again.';
+                messageBox.style.color = '#ff6b6b';
             }
         });
     </script>

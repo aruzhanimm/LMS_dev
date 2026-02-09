@@ -84,9 +84,9 @@
                     <button type="submit" class="btn glow-btn" style="min-width: 200px;">
                         <i class="fas fa-sign-in-alt"></i> Continue as <span id="roleText">Student</span>
                     </button>
-                    <a href="/logout" class="btn btn-secondary">
+                    <button type="button" id="cancelBtn" class="btn btn-secondary">
                         <i class="fas fa-times"></i> Cancel
-                    </a>
+                    </button>
                 </div>
 
                 <p style="text-align: center; margin-top: 1rem; font-size: 0.9rem; color: var(--light-gray);">
@@ -99,6 +99,7 @@
     <script>
         let selectedRole = 'student';
 
+        // Обработка кликов по карточкам
         document.getElementById('studentCard').addEventListener('click', () => {
             selectRole('student');
         });
@@ -110,20 +111,26 @@
         function selectRole(role) {
             selectedRole = role;
 
-            // Update UI
+            // Обновляем визуальную часть (карточки)
             document.getElementById('studentCard').classList.remove('selected');
             document.getElementById('professorCard').classList.remove('selected');
             document.getElementById(role + 'Card').classList.add('selected');
 
-            // Update form
+            // Обновляем скрытое поле формы и текст кнопки
             document.getElementById('selectedRole').value = role;
             document.getElementById('roleText').textContent = role.charAt(0).toUpperCase() + role.slice(1);
         }
 
-        // Initialize with student selected
+        // Инициализация (по умолчанию выбран студент)
         selectRole('student');
 
-        // Handle form submission
+        // Обработка кнопки Cancel (Выход)
+        document.getElementById('cancelBtn').addEventListener('click', async () => {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            window.location.href = '/login';
+        });
+
+        // Обработка отправки формы
         document.getElementById('roleForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
@@ -139,11 +146,14 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    window.location.href = '/profile';
+                    // ВАЖНО: Используем redirectUrl, который прислал сервер
+                    // (для профессора это будет /professor-details, для студента /profile)
+                    window.location.href = data.redirectUrl || '/profile';
                 } else {
                     alert(data.error || 'Error setting role');
                 }
             } catch (error) {
+                console.error(error);
                 alert('Network error. Please try again.');
             }
         });

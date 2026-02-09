@@ -210,7 +210,19 @@ app.get('/login', async (req, res) => {
     }
 });
 
-// --- ЗДЕСЬ БЫЛ УДАЛЕН ОШИБОЧНЫЙ БЛОК КОДА ---
+// --- НОВЫЙ МАРШРУТ ---
+app.get('/professor-details', async (req, res) => {
+    if (!req.session.user) {
+        return res.redirect('/login');
+    }
+    try {
+        const html = await renderTemplate(res, 'professor-details.html', {});
+        res.send(html);
+    } catch (error) {
+        console.error('Error rendering professor-details:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
 
 app.get('/register', async (req, res) => {
     if (req.session.user) {
